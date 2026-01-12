@@ -287,7 +287,8 @@ export const DataProvider = ({ children }) => {
                 supabase.from('products').select('*').order('name'),
                 supabase.from('employees').select('*'),
                 supabase.from('leads').select('*').order('created_at', { ascending: false }),
-                supabase.from('documentation_activities').select('*').order('created_at', { ascending: false })
+                supabase.from('documentation_activities').select('*').order('created_at', { ascending: false }),
+                supabase.from('profiles').select('*').order('first_name')
             ]);
 
             if (customersData) setCustomers(customersData.map(mapCustomerFromDB));
@@ -295,6 +296,13 @@ export const DataProvider = ({ children }) => {
             if (employeesData) setEmployees(employeesData.map(mapEmployeeFromDB));
             if (leadsData) setLeads(leadsData.map(mapLeadFromDB));
             if (docActivitiesData) setDocumentationActivities(docActivitiesData);
+            if (profilesData) setUsers(profilesData.map(p => ({
+                id: p.id,
+                firstName: p.first_name,
+                lastName: p.last_name,
+                email: p.email || '', // Email might be in auth.users, but we store it in profiles for easier access if sync'd
+                role: p.role
+            })));
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -429,13 +437,31 @@ export const DataProvider = ({ children }) => {
     };
 
     const addUser = async (user) => {
-        const newUser = { ...user, id: Date.now() };
-        setUsers([...users, newUser]);
+        // Note: New users should ideally be invited via Supabase Auth Dashboard
+        // This just creates the profile record
+        const { error } = await supabase
+            .from('profiles')
+            .insert([{
+                id: user.id || undefined, // Expecting UUID from auth if possible
+                first_name: user.firstName,
+                last_name: user.lastName,
+                role: user.role
+            }]);
+
+        if (error) console.error('Error adding user profile:', error);
+        fetchData();
     };
 
-    const removeUser = (userId) => {
+    const removeUser = async (userId) => {
         if (currentUser && userId === currentUser.id) return;
-        setUsers(users.filter(u => u.id !== userId));
+
+        const { error } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', userId);
+
+        if (error) console.error('Error removing user profile:', error);
+        fetchData();
     };
 
     const getEmployee = (id) => employees.find(e => e.id === id);

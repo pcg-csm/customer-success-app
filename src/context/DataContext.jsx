@@ -229,12 +229,51 @@ export const DataProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Initial data fetch
+    // Initial auth check and data fetch
     useEffect(() => {
-        fetchData();
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+                // Fetch profile for the authenticated user
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    setCurrentUser({
+                        id: profile.id,
+                        firstName: profile.first_name,
+                        lastName: profile.last_name,
+                        email: session.user.email,
+                        role: profile.role
+                    });
+                } else {
+                    // Fallback to basic user info if profile doesn't exist yet
+                    setCurrentUser({
+                        id: session.user.id,
+                        firstName: session.user.email.split('@')[0],
+                        lastName: '',
+                        email: session.user.email,
+                        role: 'VIEWER'
+                    });
+                }
+                fetchData();
+            } else {
+                setCurrentUser(null);
+                setIsLoading(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const fetchData = async () => {
+        // Only fetch if authenticated
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
         setIsLoading(true);
         try {
             const [
@@ -242,14 +281,12 @@ export const DataProvider = ({ children }) => {
                 { data: productsData },
                 { data: employeesData },
                 { data: leadsData },
-                { data: profilesData },
                 { data: docActivitiesData }
             ] = await Promise.all([
                 supabase.from('customers').select('*').order('company'),
                 supabase.from('products').select('*').order('name'),
                 supabase.from('employees').select('*'),
                 supabase.from('leads').select('*').order('created_at', { ascending: false }),
-                supabase.from('profiles').select('*'),
                 supabase.from('documentation_activities').select('*').order('created_at', { ascending: false })
             ]);
 
@@ -258,21 +295,6 @@ export const DataProvider = ({ children }) => {
             if (employeesData) setEmployees(employeesData.map(mapEmployeeFromDB));
             if (leadsData) setLeads(leadsData.map(mapLeadFromDB));
             if (docActivitiesData) setDocumentationActivities(docActivitiesData);
-            if (profilesData) {
-                const mappedUsers = profilesData.map(p => ({
-                    id: p.id,
-                    firstName: p.first_name,
-                    lastName: p.last_name,
-                    email: '',
-                    role: p.role,
-                    password: 'password'
-                }));
-                if (mappedUsers.length === 0) {
-                    setUsers([{ id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@pcg.com', password: 'password', role: 'ADMIN' }]);
-                } else {
-                    setUsers(mappedUsers);
-                }
-            }
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -302,22 +324,22 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    const login = (email, password) => {
-        const defaultAdmin = { id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@pcg.com', role: 'ADMIN' };
-        if (email === 'admin@pcg.com' && password === 'password') {
-            setCurrentUser(defaultAdmin);
-            return true;
+    const login = async (email, password) => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            console.error('Login error:', error.message);
+            return { success: false, error: error.message };
         }
 
-        const user = users.find(u => u.email === email && u.password === password);
-        if (user) {
-            setCurrentUser(user);
-            return true;
-        }
-        return false;
+        return { success: true };
     };
 
-    const logout = () => {
+    const logout = async () => {
+        await supabase.auth.signOut();
         setCurrentUser(null);
     };
 

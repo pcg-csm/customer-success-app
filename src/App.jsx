@@ -15,7 +15,22 @@ import Documentation from './pages/Documentation';
 import { useData } from './context/DataContext';
 
 function App() {
-  const { currentUser } = useData();
+  const { currentUser, isLoading } = useData();
+
+  if (isLoading) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0f172a',
+        color: '#64748b'
+      }}>
+        Loading security session...
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <Login />;

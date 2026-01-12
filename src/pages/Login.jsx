@@ -14,14 +14,14 @@ const Login = () => {
         setError('');
         setIsLoading(true);
 
-        // Simulate network delay for premium feel
-        setTimeout(() => {
-            const success = login(email, password);
-            if (!success) {
-                setError('Invalid email or password');
-                setIsLoading(false);
-            }
-        }, 800);
+        const result = await login(email, password);
+
+        if (!result.success) {
+            setError(result.error || 'Invalid email or password');
+            setIsLoading(false);
+        }
+        // If success, the onAuthStateChange listener in DataContext will update currentUser
+        // and App.jsx will automatically redirect.
     };
 
     return (

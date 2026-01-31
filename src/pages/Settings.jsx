@@ -25,7 +25,7 @@ const Settings = () => {
     };
 
     const handleAddEmployee = () => {
-        if (newEmployee.firstName && newEmployee.lastName && newEmployee.email && newEmployee.title) {
+        if (newEmployee.firstName && newEmployee.lastName) {
             addEmployee(newEmployee);
             setNewEmployee({ firstName: '', lastName: '', email: '', title: '', role: 'Support' });
         }
@@ -58,7 +58,6 @@ const Settings = () => {
 
             <div className="tabs">
                 <button className={`tab ${activeTab === 'data' ? 'active' : ''} `} onClick={() => setActiveTab('data')}>Data Management</button>
-                <button className={`tab ${activeTab === 'integrations' ? 'active' : ''} `} onClick={() => setActiveTab('integrations')}>Integrations</button>
             </div>
 
             <div className="tab-content">
@@ -78,9 +77,10 @@ const Settings = () => {
                                     style={{ flex: 1 }}
                                     value={newProduct}
                                     onChange={(e) => setNewProduct(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddProduct()}
                                 />
-                                <button className="btn-primary" onClick={handleAddProduct} style={{ padding: '0.5rem' }}>
-                                    <Plus size={20} />
+                                <button className="btn-primary" onClick={handleAddProduct} style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Plus size={20} /> <span>Save Product</span>
                                 </button>
                             </div>
 
@@ -148,6 +148,7 @@ const Settings = () => {
                                         style={{ flex: '1 1 200px' }}
                                         value={newEmployee.title}
                                         onChange={(e) => setNewEmployee({ ...newEmployee, title: e.target.value })}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddEmployee()}
                                     />
                                     <button
                                         className="btn-primary"

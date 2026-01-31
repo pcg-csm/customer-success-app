@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, User, Settings, Activity, ClipboardCheck, GraduationCap, BookOpen, ChevronLeft, ChevronRight, LogOut, ChevronUp, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Users, User, Settings, Activity, ClipboardCheck, GraduationCap, BookOpen, ChevronLeft, ChevronRight, LogOut, ChevronUp, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const { currentUser, users, setCurrentUser, hasPermission } = useData();
+    const { theme, toggleTheme } = useTheme();
     const [showUserSwitcher, setShowUserSwitcher] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState({
         '/customers': true,
@@ -31,7 +33,14 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                 { icon: Activity, label: 'Activity', path: '/activity' }
             ]
         },
-        { icon: ClipboardCheck, label: 'Presales', path: '/presales' },
+        {
+            icon: ClipboardCheck,
+            label: 'Presales',
+            path: '/presales',
+            subItems: [
+                { icon: Activity, label: 'Activity', path: '/activity' }
+            ]
+        },
         { icon: GraduationCap, label: 'Training', path: '/training' },
         {
             icon: BookOpen,
@@ -135,23 +144,41 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Customer Success</p>
                     </div>
                 )}
-                <button
-                    onClick={toggleSidebar}
-                    className="glass-panel"
-                    style={{
-                        padding: '0.5rem',
-                        border: 'none',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginLeft: isCollapsed ? 'auto' : '0',
-                        marginRight: isCollapsed ? 'auto' : '0',
-                        background: 'rgba(255,255,255,0.05)'
-                    }}
-                >
-                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                        onClick={toggleTheme}
+                        className="glass-panel"
+                        title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: 'var(--color-text-main)'
+                        }}
+                    >
+                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                    </button>
+                    <button
+                        onClick={toggleSidebar}
+                        className="glass-panel"
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(255,255,255,0.05)',
+                            color: 'var(--color-text-main)'
+                        }}
+                    >
+                        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    </button>
+                </div>
             </div>
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

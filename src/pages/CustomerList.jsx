@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { Search, Filter, Plus, X } from 'lucide-react';
+import { Search, Filter, Plus, X, Download } from 'lucide-react';
 
 const CustomerList = () => {
     const navigate = useNavigate();
@@ -19,11 +19,11 @@ const CustomerList = () => {
     const [filterActive, setFilterActive] = useState('All');
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
-    const handleAddCustomer = (e) => {
+    const handleAddCustomer = async (e) => {
         e.preventDefault();
         if (!newCustomer.company || !newCustomer.name) return;
 
-        const customer = addCustomer({
+        const customer = await addCustomer({
             ...newCustomer,
             status: 'Onboarding',
             active: true,
@@ -34,7 +34,9 @@ const CustomerList = () => {
 
         setIsAddModalOpen(false);
         setNewCustomer({ company: '', name: '', email: '', arr: '' });
-        navigate(`/customers/${customer.id}`);
+        if (customer && customer.id) {
+            navigate(`/customers/${customer.id}`);
+        }
     };
 
     const filteredCustomers = customers.filter(customer =>
@@ -43,6 +45,60 @@ const CustomerList = () => {
         (customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.company.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    const handleExport = () => {
+        if (filteredCustomers.length === 0) return;
+
+        // Define headers
+        const headers = [
+            'ID', 'Company', 'POC Name', 'Email', 'Phone', 'Status', 'Active', 'ARR',
+            'Signed Date', 'Terms', 'Satisfaction',
+            'NetSuite Sandbox Version', 'NetSuite Production Version', 'NetSuite Sandbox URL', 'NetSuite Production URL',
+            'Tulip App Version', 'Tulip Workstations', 'Tulip Account URL',
+            'Licensed Products', 'Customer Team'
+        ];
+
+        // Map data to rows
+        const rows = filteredCustomers.map(c => [
+            c.id,
+            `"${c.company || ''}"`,
+            `"${c.name || ''}"`,
+            c.email || '',
+            c.phone || '',
+            c.status || '',
+            c.active ? 'Yes' : 'No',
+            `"${c.arr || ''}"`,
+            c.signedDate || '',
+            `"${c.terms || ''}"`,
+            c.satisfaction || '',
+            c.netsuite?.sandboxVersion || '',
+            c.netsuite?.productionVersion || '',
+            c.netsuite?.sandboxUrl || '',
+            c.netsuite?.productionUrl || '',
+            c.tulip?.appVersion || '',
+            c.tulip?.workstations || '',
+            c.tulip?.accountUrl || '',
+            `"${(c.licensedProducts || []).join('; ')}"`,
+            `"${(c.customerTeam || []).map(m => `${m.firstName} ${m.lastName} (${m.role}) <${m.email}>`).join('; ')}"`
+        ]);
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `customers_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -61,6 +117,14 @@ const CustomerList = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                        className="glass-panel"
+                        onClick={handleExport}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}
+                        title="Export to CSV"
+                    >
+                        <Download size={18} /> Export
+                    </button>
                     {hasPermission('MANAGE_CUSTOMERS') && (
                         <button className="glass-panel" onClick={() => setIsAddModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
                             <Plus size={18} /> New Customer

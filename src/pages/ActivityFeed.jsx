@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import Card from '../components/Card';
-import { Calendar, User, ArrowRight, MessageSquare } from 'lucide-react';
+import { Calendar, User, ArrowRight, MessageSquare, Plus } from 'lucide-react';
 
 const ActivityFeed = () => {
     const { customers, documentationActivities, employees } = useData();
@@ -42,11 +42,22 @@ const ActivityFeed = () => {
     return (
         <div>
             <header style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <MessageSquare size={32} style={{ color: 'var(--color-primary)' }} />
-                    Global Activity Feed
-                </h1>
-                <p style={{ color: 'var(--color-text-muted)' }}>Real-time updates across your entire customer portfolio and documentation efforts.</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                        <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <MessageSquare size={32} style={{ color: 'var(--color-primary)' }} />
+                            Global Activity Feed
+                        </h1>
+                        <p style={{ color: 'var(--color-text-muted)' }}>Real-time updates across your entire customer portfolio and documentation efforts.</p>
+                    </div>
+                    <button
+                        className="btn-primary"
+                        onClick={() => navigate('/activity/new')}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        <Plus size={20} /> Create Activity
+                    </button>
+                </div>
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px' }}>

@@ -5,10 +5,14 @@ import App from './App.jsx'
 
 import { DataProvider } from './context/DataContext'
 
+import { ThemeProvider } from './context/ThemeContext'
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <DataProvider>
-      <App />
-    </DataProvider>
+    <ThemeProvider>
+      <DataProvider>
+        <App />
+      </DataProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

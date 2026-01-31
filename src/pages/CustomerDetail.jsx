@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import Card from '../components/Card';
-import { ArrowLeft, Building, Calendar, CheckCircle, XCircle, Shield, Server, Monitor, Upload, Users, MessageSquare, Send, Plus, Trash2, Clock, FileText, Paperclip, Download, Eye, Smile } from 'lucide-react';
+import { ArrowLeft, Building, Calendar, CheckCircle, XCircle, Shield, Server, Monitor, Upload, Users, MessageSquare, Send, Plus, Trash2, Clock, FileText, Paperclip, Download, Eye, Smile, Save } from 'lucide-react';
 
 const SatisfactionGauge = ({ score }) => {
     // Basic gauge calculation
@@ -58,7 +58,7 @@ const CustomerDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { customers, updateCustomer, hasPermission, products, employees } = useData();
-    const customer = customers.find(c => c.id === parseInt(id));
+    const customer = customers.find(c => String(c.id) === String(id));
     const [activeTab, setActiveTab] = useState('overview');
     const [activities, setActivities] = useState(customer?.activityLog || []);
     const [newActivity, setNewActivity] = useState('');
@@ -114,15 +114,24 @@ const CustomerDetail = () => {
 
     // Helpers
     const getEmployee = (id) => employees.find(e => e.id === id);
-    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString();
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+    };
 
     const calculateRenewal = (signedDate, termsInMonths) => {
+        if (!signedDate || !termsInMonths) return 'N/A';
         const d = new Date(signedDate);
+        if (isNaN(d.getTime())) return 'N/A';
         d.setMonth(d.getMonth() + termsInMonths);
         return d.toLocaleDateString();
     };
 
-    const renewalDate = calculateRenewal(customer.signedDate, customer.terms);
+    const renewalDate = calculateRenewal(
+        isEditing ? formData.signedDate : customer.signedDate,
+        isEditing ? formData.terms : customer.terms
+    );
 
     return (
         <div>
@@ -182,9 +191,36 @@ const CustomerDetail = () => {
                 <div style={{ textAlign: 'right' }}>
                     {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <button className="btn-primary" onClick={handleSave} style={{ background: 'var(--color-success)' }}>Save</button>
-                                <button className="glass-panel" onClick={handleCancel} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>Cancel</button>
+                            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+                                <button
+                                    className="btn-primary"
+                                    onClick={handleSave}
+                                    style={{
+                                        background: 'var(--color-success)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.6rem 1.25rem'
+                                    }}
+                                >
+                                    <Save size={18} />
+                                    Save Changes
+                                </button>
+                                <button
+                                    className="glass-panel"
+                                    onClick={handleCancel}
+                                    style={{
+                                        padding: '0.6rem 1.25rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        background: 'rgba(255,255,255,0.05)'
+                                    }}
+                                >
+                                    <XCircle size={18} />
+                                    Cancel
+                                </button>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -238,7 +274,6 @@ const CustomerDetail = () => {
                                     <button className="glass-panel" onClick={() => setIsEditing(true)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem' }}>Edit Customer</button>
                                 )}
                             </div>
-                            {/* !isEditing check is redundant inside the else block of isEditing, but keeping structure for safety if needed, or simplifying */}
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
                                 <div className={`badge ${customer.status === 'Live' ? 'badge-success' : 'badge-warning'}`}>
                                     {customer.status}
@@ -306,7 +341,7 @@ const CustomerDetail = () => {
                                 <Smile size={20} /> Satisfaction Score
                             </h3>
                             <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
-                                <SatisfactionGauge score={customer.satisfaction || 7} />
+                                <SatisfactionGauge score={(isEditing ? formData.satisfaction : customer.satisfaction) || 7} />
                             </div>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: '1rem' }}>
                                 Health score based on recent activity logs.
@@ -335,11 +370,11 @@ const CustomerDetail = () => {
                                         </label>
                                     ))
                                 ) : (
-                                    customer.licensedProducts.map(prod => (
+                                    customer.licensedProducts?.map(prod => (
                                         <span key={prod} className="badge badge-neutral" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
                                             {prod}
                                         </span>
-                                    ))
+                                    )) || null
                                 )}
                             </div>
                         </Card>
@@ -363,9 +398,9 @@ const CustomerDetail = () => {
                                 )}
                             </div>
 
-                            {(formData.customerTeam || customer.customerTeam) ? (
+                            {(isEditing ? (formData.customerTeam || []) : (customer.customerTeam || [])) ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-                                    {(isEditing ? formData.customerTeam : customer.customerTeam).map((contact, idx) => (
+                                    {(isEditing ? (formData.customerTeam || []) : (customer.customerTeam || [])).map((contact, idx) => (
                                         <div key={idx} className="glass-panel" style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', position: 'relative' }}>
                                             {isEditing ? (
                                                 <div style={{ width: '100%' }}>
@@ -461,7 +496,7 @@ const CustomerDetail = () => {
                                     <span style={{ color: 'var(--color-text-muted)' }}>Version</span>
                                     {isEditing ? (
                                         <input className="search-input" value={formData.netsuite?.sandboxVersion || ''} onChange={e => setFormData({ ...formData, netsuite: { ...formData.netsuite, sandboxVersion: e.target.value } })} />
-                                    ) : <span>{customer.netsuite.sandboxVersion}</span>}
+                                    ) : <span>{customer.netsuite?.sandboxVersion || 'N/A'}</span>}
                                 </div>
                                 {isEditing ? (
                                     <input className="search-input" style={{ width: '100%' }} placeholder="Sandbox URL" value={formData.netsuite?.sandboxUrl || ''} onChange={e => setFormData({ ...formData, netsuite: { ...formData.netsuite, sandboxUrl: e.target.value } })} />
@@ -475,7 +510,7 @@ const CustomerDetail = () => {
                                     <span style={{ color: 'var(--color-text-muted)' }}>Version</span>
                                     {isEditing ? (
                                         <input className="search-input" value={formData.netsuite?.productionVersion || ''} onChange={e => setFormData({ ...formData, netsuite: { ...formData.netsuite, productionVersion: e.target.value } })} />
-                                    ) : <span>{customer.netsuite.productionVersion}</span>}
+                                    ) : <span>{customer.netsuite?.productionVersion || 'N/A'}</span>}
                                 </div>
                                 {isEditing ? (
                                     <input className="search-input" style={{ width: '100%' }} placeholder="Production URL" value={formData.netsuite?.productionUrl || ''} onChange={e => setFormData({ ...formData, netsuite: { ...formData.netsuite, productionUrl: e.target.value } })} />
@@ -497,7 +532,7 @@ const CustomerDetail = () => {
                                             <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: '500', borderBottom: '1px solid var(--glass-border)' }}>
                                                 {isEditing ? (
                                                     <input className="search-input" value={formData.tulip?.appVersion || ''} onChange={e => setFormData({ ...formData, tulip: { ...formData.tulip, appVersion: e.target.value } })} />
-                                                ) : customer.tulip.appVersion}
+                                                ) : customer.tulip?.appVersion || 'N/A'}
                                             </td>
                                         </tr>
                                         <tr>
@@ -524,9 +559,55 @@ const CustomerDetail = () => {
 
                             <Card>
                                 <h3 style={{ marginBottom: '1rem', fontWeight: 'bold', fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>Key and Secrets</h3>
-                                <div className="glass-panel" style={{ border: '1px dashed var(--color-border)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', transition: 'background 0.2s' }}>
+                                <label
+                                    className="glass-panel"
+                                    style={{
+                                        border: '1px dashed var(--color-border)',
+                                        cursor: isEditing ? 'pointer' : 'default',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '2rem',
+                                        transition: 'background 0.2s',
+                                        width: '100%'
+                                    }}
+                                >
                                     <Upload size={32} style={{ color: 'var(--color-primary)', marginBottom: '0.5rem' }} />
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Upload File</span>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{isEditing ? 'Upload File' : 'No secrets uploaded'}</span>
+                                    {isEditing && (
+                                        <input
+                                            type="file"
+                                            style={{ display: 'none' }}
+                                            onClick={(e) => { e.target.value = null; }}
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const newSecret = { name: file.name, size: (file.size / 1024).toFixed(0) + ' KB', date: new Date().toLocaleDateString() };
+                                                    setFormData({ ...formData, attachments: [...(formData.attachments || []), { ...newSecret, isSecret: true }] });
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                </label>
+                                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {(formData.attachments || customer.attachments || []).filter(a => a.isSecret).map((secret, idx) => (
+                                        <div key={idx} className="glass-panel" style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', background: 'rgba(255,255,255,0.03)' }}>
+                                            <Shield size={14} style={{ color: 'var(--color-primary)' }} />
+                                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{secret.name}</span>
+                                            {isEditing && (
+                                                <button
+                                                    onClick={() => {
+                                                        const newAttachments = formData.attachments.filter(a => a !== secret);
+                                                        setFormData({ ...formData, attachments: newAttachments });
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </Card>
                         </div>
@@ -543,8 +624,6 @@ const CustomerDetail = () => {
                         ].map((section) => {
                             const currentId = formData[section.idField];
                             const emp = getEmployee(currentId);
-                            // Filter employees for dropdown based on role, or show all? Let's show all for flexibility or filter by role.
-                            // Showing all for simplicity as roles might overlap or be flexible.
 
                             return (
                                 <Card key={section.title}>
@@ -554,7 +633,10 @@ const CustomerDetail = () => {
                                             className="search-input"
                                             style={{ width: '100%' }}
                                             value={currentId || ''}
-                                            onChange={(e) => setFormData({ ...formData, [section.idField]: parseInt(e.target.value) })}
+                                            onChange={(e) => {
+                                                const val = e.target.value === '' ? null : parseInt(e.target.value);
+                                                setFormData({ ...formData, [section.idField]: val });
+                                            }}
                                         >
                                             <option value="">Select Employee</option>
                                             {employees.map(e => (
@@ -586,7 +668,7 @@ const CustomerDetail = () => {
                                     className="glass-panel"
                                     rows="4"
                                     placeholder="Log a call, email, or meeting note..."
-                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'white', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', resize: 'vertical', marginBottom: '1rem' }}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-main)', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', resize: 'vertical', marginBottom: '1rem' }}
                                     value={newActivity}
                                     onChange={(e) => setNewActivity(e.target.value)}
                                 ></textarea>
@@ -650,7 +732,7 @@ const CustomerDetail = () => {
                                     className="glass-panel"
                                     rows="15"
                                     placeholder="Describe any custom personalizations, overrides, or special handling instructions for this customer..."
-                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'white', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', resize: 'vertical', lineHeight: '1.6' }}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-main)', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', resize: 'vertical', lineHeight: '1.6' }}
                                     value={formData.personalizations || ''}
                                     onChange={(e) => setFormData({ ...formData, personalizations: e.target.value })}
                                 ></textarea>
@@ -674,6 +756,7 @@ const CustomerDetail = () => {
                                             <input
                                                 type="file"
                                                 style={{ display: 'none' }}
+                                                onClick={(e) => { e.target.value = null; }}
                                                 onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
@@ -756,6 +839,7 @@ const CustomerDetail = () => {
                                         type="file"
                                         style={{ display: 'none' }}
                                         disabled={(formData.documents || []).length >= 3}
+                                        onClick={(e) => { e.target.value = null; }}
                                         onChange={(e) => {
                                             const file = e.target.files[0];
                                             if (file) {
@@ -800,7 +884,7 @@ const CustomerDetail = () => {
                                                         <Eye size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => alert(`Simulating DOWNLOAD for: ${doc.name}\n\n(In a real app, this would trigger a file download)`)}
+                                                        onClick={() => alert(`Simulating download for: ${doc.name}\n\n(In a real app, this would trigger a file download)`)}
                                                         style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer' }}
                                                         title="Download"
                                                     >
@@ -813,7 +897,7 @@ const CustomerDetail = () => {
                                 ))
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                                    No contracts uploaded.
+                                    No contract documents uploaded.
                                 </div>
                             )}
                         </div>
@@ -825,4 +909,3 @@ const CustomerDetail = () => {
 };
 
 export default CustomerDetail;
-

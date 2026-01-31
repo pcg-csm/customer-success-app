@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { FileText, Factory, Wifi, Server, ClipboardCheck, Save, Share, Plus, Edit2, Trash2, ArrowLeft, Search, Filter } from 'lucide-react';
+import { FileText, Factory, Wifi, Server, ClipboardCheck, Save, Share, Plus, Edit2, Trash2, ArrowLeft, Search, Filter, Upload } from 'lucide-react';
 
 const INITIAL_FORM_STATE = {
     // Lead Info
     companyName: '', pocName: '', pocEmail: '', annualRevenue: '', userCount: '', currentErp: '',
-    painPoints: '', timeline: '', budgetStatus: 'Unbudgeted', decisionProcess: '',
-    nextStepDate: '', probability: 'Medium',
+    painPoints: '', timeline: '',
     status: 'New',
 
     // Operations
     sites: '', operators: '', shifts: '', woPerDay: '', fgItems: '', inventoryItems: '',
-    stagingBins: '', coMan: '', equipmentCount: '', manualStations: '',
 
     // Connectivity
     opcMachines: '', workCells: '', oldMachines: '',
@@ -32,14 +30,8 @@ const INITIAL_FORM_STATE = {
     labeling: 'No', zebraPrinters: 'No',
     regulatory: 'None', validation: 'No',
 
-    // Advanced Mfg
-    batchProcess: 'No', ebr: 'No',
-    continuousImprovement: 'No', ciData: '',
-    setupInstructions: 'No', setupFormat: '',
-    workInstructions: 'No', wiFormat: '',
-    downtime: 'No', dtExisting: 'No',
-    materialLoss: 'No', mlExisting: 'No',
-    laborCodes: 'No', laborExisting: 'No'
+    // Demo
+    demoNotes: ''
 };
 
 const Presales = () => {
@@ -83,9 +75,8 @@ const Presales = () => {
     };
 
     const filteredLeads = leads.filter(lead =>
-        (filterProbability === 'All' || lead.probability === filterProbability) &&
-        (lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.pocName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.pocName.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const handleShare = () => {
@@ -103,16 +94,11 @@ Lead Info
 ---------
 Pain Points: ${formData.painPoints}
 Timeline: ${formData.timeline}
-Budget: ${formData.budgetStatus}
-Decision Process: ${formData.decisionProcess}
-Probability: ${formData.probability}
-Next Step: ${formData.nextStepDate}
 
 Operations
 ----------
 Sites: ${formData.sites} | Shifts: ${formData.shifts} | Operators: ${formData.operators}
 WO/Day: ${formData.woPerDay}
-Equipment: ${formData.equipmentCount}
 
 Connectivity
 ------------
@@ -127,11 +113,9 @@ WMS: ${formData.wmsSystem}
 QMS: ${formData.qmsSystem}
 Regulatory: ${formData.regulatory}
 
-Advanced Mfg
-------------
-Batch Process: ${formData.batchProcess}
-Setup Instructions: ${formData.setupInstructions}
-Work Instructions: ${formData.workInstructions}
+Demo Notes
+----------
+${formData.demoNotes}
         `.trim();
 
         window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -142,7 +126,7 @@ Work Instructions: ${formData.workInstructions}
         { id: 'ops', label: 'Operations', icon: Factory },
         { id: 'connect', label: 'Connectivity', icon: Wifi },
         { id: 'systems', label: 'Systems', icon: Server },
-        { id: 'mfg', label: 'Advanced Mfg', icon: ClipboardCheck },
+        { id: 'mfg', label: 'Demo', icon: ClipboardCheck },
     ];
 
     if (view === 'list') {
@@ -177,42 +161,6 @@ Work Instructions: ${formData.workInstructions}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div style={{ position: 'relative' }}>
-                            <button
-                                className="glass-panel"
-                                onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', color: isFilterMenuOpen ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer' }}
-                            >
-                                <Filter size={18} />
-                                <span>{filterProbability === 'All' ? 'Filter' : filterProbability}</span>
-                            </button>
-                            {isFilterMenuOpen && (
-                                <div className="glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', minWidth: '180px', zIndex: 50, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem', fontWeight: 'bold' }}>BY PROBABILITY</div>
-                                    {['All', 'High', 'Medium', 'Low'].map(prob => (
-                                        <button
-                                            key={prob}
-                                            onClick={() => { setFilterProbability(prob); setIsFilterMenuOpen(false); }}
-                                            style={{
-                                                textAlign: 'left',
-                                                padding: '0.5rem',
-                                                borderRadius: '4px',
-                                                background: filterProbability === prob ? 'rgba(255,255,255,0.1)' : 'transparent',
-                                                color: filterProbability === prob ? 'white' : 'var(--color-text-muted)',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}
-                                        >
-                                            {prob}
-                                            {filterProbability === prob && <span style={{ color: 'var(--color-primary)' }}>•</span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </header>
 
@@ -223,8 +171,6 @@ Work Instructions: ${formData.workInstructions}
                                 <th style={{ padding: '1rem' }}>Company</th>
                                 <th style={{ padding: '1rem' }}>POC</th>
                                 <th style={{ padding: '1rem' }}>Revenue</th>
-                                <th style={{ padding: '1rem' }}>Probability</th>
-                                <th style={{ padding: '1rem' }}>Next Step</th>
                                 <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
@@ -237,12 +183,6 @@ Work Instructions: ${formData.workInstructions}
                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{lead.pocEmail}</div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>{lead.annualRevenue}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <span className={`badge ${lead.probability === 'High' ? 'badge-success' : lead.probability === 'Medium' ? 'badge-warning' : 'badge-neutral'}`}>
-                                            {lead.probability}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>{lead.nextStepDate}</td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                                             <button
@@ -287,7 +227,7 @@ Work Instructions: ${formData.workInstructions}
                         </tbody>
                     </table>
                 </Card>
-            </div>
+            </div >
         );
     }
 
@@ -361,39 +301,11 @@ Work Instructions: ${formData.workInstructions}
                             <h3 className="card-title">Deal Qualification</h3>
                             <div className="form-group">
                                 <label>Pain Points (Top 3)</label>
-                                <textarea className="glass-panel w-full" rows="3" value={formData.painPoints} onChange={e => handleChange('painPoints', e.target.value)} />
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Target Go-Live</label>
-                                    <input type="date" className="search-input w-full" value={formData.timeline} onChange={e => handleChange('timeline', e.target.value)} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Budget Status</label>
-                                    <select className="search-input w-full" value={formData.budgetStatus} onChange={e => handleChange('budgetStatus', e.target.value)}>
-                                        <option>Unbudgeted</option>
-                                        <option>Budgeted</option>
-                                        <option>Approved</option>
-                                    </select>
-                                </div>
+                                <textarea className="glass-panel w-full" rows="10" value={formData.painPoints} onChange={e => handleChange('painPoints', e.target.value)} />
                             </div>
                             <div className="form-group">
-                                <label>Decision Process (Economic Buyer)</label>
-                                <input className="search-input w-full" value={formData.decisionProcess} onChange={e => handleChange('decisionProcess', e.target.value)} />
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Probability</label>
-                                    <select className="search-input w-full" value={formData.probability} onChange={e => handleChange('probability', e.target.value)}>
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Next Step Date</label>
-                                    <input type="date" className="search-input w-full" value={formData.nextStepDate} onChange={e => handleChange('nextStepDate', e.target.value)} />
-                                </div>
+                                <label>Target Go-Live</label>
+                                <input type="date" className="search-input w-full" value={formData.timeline} onChange={e => handleChange('timeline', e.target.value)} />
                             </div>
                         </Card>
                     </div>
@@ -417,18 +329,26 @@ Work Instructions: ${formData.workInstructions}
                             </div>
                         </Card>
                         <Card>
-                            <h3 className="card-title">Logistics & Equipment</h3>
-                            <div className="form-group">
-                                <label>Staging Bins / Locations?</label>
-                                <textarea className="glass-panel w-full" rows="2" value={formData.stagingBins} onChange={e => handleChange('stagingBins', e.target.value)} placeholder="Incoming / Outgoing / WIP..." />
-                            </div>
-                            <div className="form-group">
-                                <label>Outside / Co-Manufacturing?</label>
-                                <textarea className="glass-panel w-full" rows="2" value={formData.coMan} onChange={e => handleChange('coMan', e.target.value)} />
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group"><label>Equipment Count</label><input type="number" className="search-input w-full" value={formData.equipmentCount} onChange={e => handleChange('equipmentCount', e.target.value)} /></div>
-                                <div className="form-group"><label>Manual Stations</label><input type="number" className="search-input w-full" value={formData.manualStations} onChange={e => handleChange('manualStations', e.target.value)} /></div>
+                            <h3 className="card-title">Documentation & Layout</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Plant Layout</label>
+                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
+                                        <Upload size={18} /> Upload Plant Layout
+                                    </button>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>BOM / Routing</label>
+                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
+                                        <Upload size={18} /> Upload BOM/Routing
+                                    </button>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Other Documentation</label>
+                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
+                                        <Upload size={18} /> Upload Other
+                                    </button>
+                                </div>
                             </div>
                         </Card>
                     </div>
@@ -542,50 +462,17 @@ Work Instructions: ${formData.workInstructions}
                 )}
 
                 {activeTab === 'mfg' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                         <Card>
-                            <h3 className="card-title">Process Depth</h3>
-                            <div className="form-row">
-                                <div className="form-group"><label>Batch Process?</label><select className="search-input w-full" value={formData.batchProcess} onChange={e => handleChange('batchProcess', e.target.value)}><option>No</option><option>Yes</option></select></div>
-                                <div className="form-group"><label>eBR Required?</label><select className="search-input w-full" value={formData.ebr} onChange={e => handleChange('ebr', e.target.value)}><option>No</option><option>Yes</option></select></div>
-                            </div>
+                            <h3 className="card-title">Demo Agenda and Notes</h3>
                             <div className="form-group">
-                                <label>Continuous Improvement Data?</label>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <select className="search-input" value={formData.continuousImprovement} onChange={e => handleChange('continuousImprovement', e.target.value)} style={{ width: '100px' }}><option>No</option><option>Yes</option></select>
-                                    {formData.continuousImprovement === 'Yes' && <textarea className="glass-panel w-full" rows="2" placeholder="Data elements..." value={formData.ciData} onChange={e => handleChange('ciData', e.target.value)} />}
-                                </div>
-                            </div>
-                        </Card>
-                        <Card>
-                            <h3 className="card-title">Workflows & Instructions</h3>
-                            <div className="form-group">
-                                <label>Setup Instructions?</label>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <select className="search-input" value={formData.setupInstructions} onChange={e => handleChange('setupInstructions', e.target.value)}><option>No</option><option>Yes</option></select>
-                                    {formData.setupInstructions === 'Yes' && <input className="search-input w-full" placeholder="Format (PDF, etc)" value={formData.setupFormat} onChange={e => handleChange('setupFormat', e.target.value)} />}
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label>Work Instructions?</label>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <select className="search-input" value={formData.workInstructions} onChange={e => handleChange('workInstructions', e.target.value)}><option>No</option><option>Yes</option></select>
-                                    {formData.workInstructions === 'Yes' && <input className="search-input w-full" placeholder="Format" value={formData.wiFormat} onChange={e => handleChange('wiFormat', e.target.value)} />}
-                                </div>
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>Downtime Reasons?</label>
-                                    <select className="search-input w-full" value={formData.downtime} onChange={e => handleChange('downtime', e.target.value)}><option>No</option><option>Yes (New)</option><option>Yes (Existing)</option></select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Material Loss?</label>
-                                    <select className="search-input w-full" value={formData.materialLoss} onChange={e => handleChange('materialLoss', e.target.value)}><option>No</option><option>Yes (New)</option><option>Yes (Existing)</option></select>
-                                </div>
-                            </div>
-                            <div className="form-group">
-                                <label>Labor Codes?</label>
-                                <select className="search-input w-full" value={formData.laborCodes} onChange={e => handleChange('laborCodes', e.target.value)}><option>No</option><option>Yes (New)</option><option>Yes (Existing)</option></select>
+                                <textarea
+                                    className="glass-panel w-full"
+                                    rows="15"
+                                    placeholder="Enter demo agenda, key points to cover, and notes during the session..."
+                                    value={formData.demoNotes}
+                                    onChange={e => handleChange('demoNotes', e.target.value)}
+                                />
                             </div>
                         </Card>
                     </div>

@@ -31,7 +31,8 @@ const INITIAL_FORM_STATE = {
     regulatory: 'None', validation: 'No',
 
     // Demo
-    demoNotes: ''
+    demoNotes: '',
+    attachments: []
 };
 
 const Presales = () => {
@@ -331,24 +332,74 @@ ${formData.demoNotes}
                         <Card>
                             <h3 className="card-title">Documentation & Layout</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label>Plant Layout</label>
-                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
-                                        <Upload size={18} /> Upload Plant Layout
-                                    </button>
-                                </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label>BOM / Routing</label>
-                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
-                                        <Upload size={18} /> Upload BOM/Routing
-                                    </button>
-                                </div>
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label>Other Documentation</label>
-                                    <button type="button" className="glass-panel w-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', color: 'var(--color-text-muted)' }}>
-                                        <Upload size={18} /> Upload Other
-                                    </button>
-                                </div>
+                                {[
+                                    { label: 'Plant Layout', type: 'Layout' },
+                                    { label: 'BOM / Routing', type: 'BOM' },
+                                    { label: 'Other Documentation', type: 'Other' }
+                                ].map((docType) => (
+                                    <div key={docType.type} className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>{docType.label}</label>
+                                        <label
+                                            className="glass-panel w-full"
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem',
+                                                padding: '1rem',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                color: 'var(--color-text-muted)',
+                                                cursor: 'pointer',
+                                                border: '1px dashed var(--glass-border)'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Upload size={18} />
+                                                <span>Upload {docType.label}</span>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                style={{ display: 'none' }}
+                                                onClick={(e) => { e.target.value = null; }}
+                                                onChange={(e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        const newDoc = {
+                                                            name: file.name,
+                                                            size: (file.size / 1024).toFixed(0) + ' KB',
+                                                            date: new Date().toLocaleDateString(),
+                                                            type: docType.type
+                                                        };
+                                                        setFormData({ ...formData, attachments: [...(formData.attachments || []), newDoc] });
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+
+                                        {/* List uploaded files for this specific type */}
+                                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {(formData.attachments || []).filter(a => a.type === docType.type).map((file, idx) => (
+                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '0.85rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+                                                        <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newAttachments = formData.attachments.filter(a => a !== file);
+                                                            setFormData({ ...formData, attachments: newAttachments });
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                                    >
+                                                        <XCircle size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </Card>
                     </div>

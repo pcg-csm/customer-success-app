@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { FileText, Factory, Wifi, Server, ClipboardCheck, Save, Share, Plus, Edit2, Trash2, ArrowLeft, Search, Filter, Upload } from 'lucide-react';
+import { FileText, Factory, Wifi, Server, ClipboardCheck, Save, Share, Plus, Edit2, Trash2, ArrowLeft, Search, Filter, Upload, MessageSquare, Calendar, XCircle } from 'lucide-react';
+import EditActivityModal from '../components/EditActivityModal';
 
 const INITIAL_FORM_STATE = {
     // Lead Info
@@ -36,13 +37,16 @@ const INITIAL_FORM_STATE = {
 };
 
 const Presales = () => {
-    const { leads, addLead, updateLead, removeLead, hasPermission } = useData();
+    const { leads, presalesActivities, addLead, updateLead, removeLead, hasPermission, deleteActivity, updateActivityContent } = useData();
     const [view, setView] = useState('list'); // 'list' or 'form'
     const [activeTab, setActiveTab] = useState('lead');
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterProbability, setFilterProbability] = useState('All');
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+
+    const [selectedActivity, setSelectedActivity] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -75,10 +79,29 @@ const Presales = () => {
         setView('list');
     };
 
+    const handleDeleteActivity = async (id) => {
+        if (window.confirm('Are you sure you want to delete this activity?')) {
+            const { error } = await deleteActivity(id, 'presales');
+            if (error) alert('Error: ' + error.message);
+        }
+    };
+
+    const handleEditActivity = (activity) => {
+        setSelectedActivity({ ...activity, type: 'presales' });
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveActivityEdit = async (id, type, content) => {
+        const { error } = await updateActivityContent(id, type, content);
+        if (error) alert('Error: ' + error.message);
+    };
+
     const filteredLeads = leads.filter(lead =>
     (lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.pocName.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    const filteredActivities = (presalesActivities || []).filter(a => String(a.leadId) === String(formData.id));
 
     const handleShare = () => {
         const subject = `Presales Discovery: ${formData.companyName || 'New Lead'}`;
@@ -128,6 +151,7 @@ ${formData.demoNotes}
         { id: 'connect', label: 'Connectivity', icon: Wifi },
         { id: 'systems', label: 'Systems', icon: Server },
         { id: 'mfg', label: 'Demo', icon: ClipboardCheck },
+        { id: 'activities', label: 'Activities', icon: MessageSquare }
     ];
 
     if (view === 'list') {
@@ -529,6 +553,56 @@ ${formData.demoNotes}
                     </div>
                 )}
 
+                {activeTab === 'activities' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                        <Card>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 className="card-title" style={{ marginBottom: 0 }}>Lead Activity Feed</h3>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                                    {filteredActivities.length} logs for {formData.companyName}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {filteredActivities.length > 0 ? (
+                                    filteredActivities.map(activity => (
+                                        <div key={activity.id} className="glass-panel" style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                                    <Calendar size={14} /> {new Date(activity.timestamp).toLocaleString()}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditActivity(activity)}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                                    >
+                                                        <Edit2 size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteActivity(`pre-${activity.id}`)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p style={{ lineHeight: '1.5', fontSize: '0.9rem', color: '#000000', background: '#f8fafc', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                                                {activity.content}
+                                            </p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                                        No activities logged for this lead.
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
                 <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
                     <button type="button" className="glass-panel" onClick={() => setView('list')} style={{ padding: '0.75rem 1.5rem', cursor: 'pointer' }}>Cancel</button>
                     <button type="button" className="glass-panel" onClick={handleShare} style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', cursor: 'pointer' }}>
@@ -541,6 +615,16 @@ ${formData.demoNotes}
                     )}
                 </div>
             </form>
+
+            {isEditModalOpen && (
+                <EditActivityModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    activity={selectedActivity}
+                    onSave={handleSaveActivityEdit}
+                />
+            )}
+
 
             <style>{`
                 .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }

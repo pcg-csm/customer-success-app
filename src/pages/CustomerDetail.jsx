@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import Card from '../components/Card';
-import { ArrowLeft, Building, Calendar, CheckCircle, XCircle, Shield, Server, Monitor, Upload, Users, MessageSquare, Send, Plus, Trash2, Clock, FileText, Paperclip, Download, Eye, Smile, Save } from 'lucide-react';
+import { ArrowLeft, Building, Calendar, CheckCircle, XCircle, Shield, Server, Monitor, Upload, Users, MessageSquare, Send, Plus, Trash2, Clock, FileText, Paperclip, Download, Eye, Smile, Save, Edit2 } from 'lucide-react';
+import EditActivityModal from '../components/EditActivityModal';
+
 
 const SatisfactionGauge = ({ score }) => {
     // Basic gauge calculation
@@ -57,12 +59,16 @@ const SatisfactionGauge = ({ score }) => {
 const CustomerDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { customers, updateCustomer, hasPermission, products, employees } = useData();
+    const { customers, updateCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent } = useData();
     const customer = customers.find(c => String(c.id) === String(id));
     const [activeTab, setActiveTab] = useState('overview');
     const [activities, setActivities] = useState(customer?.activityLog || []);
     const [newActivity, setNewActivity] = useState('');
     const [reminderDate, setReminderDate] = useState('');
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState(null);
+
 
     // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
@@ -691,19 +697,44 @@ const CustomerDetail = () => {
                             </Card>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {activities.map((log) => (
-                                    <Card key={log.id} style={{ padding: '1.5rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                                            <Calendar size={14} /> {new Date(log.timestamp).toLocaleString()}
-                                            {log.reminder && (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-warning)', marginLeft: '1rem', background: 'rgba(255,165,0,0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
-                                                    <Clock size={12} /> Reminder: {new Date(log.reminder).toLocaleDateString()}
-                                                </span>
-                                            )}
+                                {(activities || []).map(log => (
+                                    <Card key={log.id} style={{ padding: '1.5rem', position: 'relative' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                                <Calendar size={14} /> {new Date(log.timestamp).toLocaleString()}
+                                                {log.reminder && (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-warning)', marginLeft: '1rem', background: 'rgba(255,165,0,0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
+                                                        <Clock size={12} /> Reminder: {new Date(log.reminder).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedActivity({ ...log, type: 'customer' });
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (window.confirm('Delete this activity?')) {
+                                                            const { error } = await deleteActivity(`cust-${log.id}`, 'customer');
+                                                            if (error) alert('Error: ' + error.message);
+                                                        }
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <p style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{log.content}</p>
+                                        <p style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'black', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>{log.content}</p>
                                     </Card>
                                 ))}
+
                                 {activities.length === 0 && (
                                     <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>No activity logged yet.</div>
                                 )}
@@ -904,6 +935,15 @@ const CustomerDetail = () => {
                     </Card>
                 )}
             </div>
+            <EditActivityModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                activity={selectedActivity}
+                onSave={async (id, type, content) => {
+                    const { error } = await updateActivityContent(id, type, content);
+                    if (error) alert('Error: ' + error.message);
+                }}
+            />
         </div>
     );
 };

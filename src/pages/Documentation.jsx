@@ -8,16 +8,24 @@ import {
     Check,
     AlertCircle,
     Search,
-    BookOpen
+    BookOpen,
+    Edit2,
+    Trash2
 } from 'lucide-react';
+import EditActivityModal from '../components/EditActivityModal';
 
 const Documentation = () => {
     const {
         documentationActivities,
         addDocumentationActivity,
         employees,
-        isLoading
+        isLoading,
+        deleteActivity,
+        updateActivityContent
     } = useData();
+
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState(null);
 
     const [activeTab, setActiveTab] = useState('SmartFactory for NetSuite');
     const [searchTerm, setSearchTerm] = useState('');
@@ -195,6 +203,7 @@ const Documentation = () => {
                                 <th>Date</th>
                                 <th>Team Member</th>
                                 <th>Description</th>
+                                <th style={{ textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -218,7 +227,33 @@ const Documentation = () => {
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                                                     <FileText size={14} style={{ marginTop: '3px', flexShrink: 0 }} className="text-muted" />
-                                                    <span style={{ lineHeight: '1.5' }}>{activity.description}</span>
+                                                    <span style={{ lineHeight: '1.5', color: 'black' }}>{activity.description}</span>
+                                                </div>
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedActivity({ ...activity, id: `doc-${activity.id}`, type: 'documentation', content: activity.description });
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                        title="Edit Activity"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (window.confirm('Delete this documentation activity?')) {
+                                                                const { error } = await deleteActivity(`doc-${activity.id}`, 'documentation');
+                                                                if (error) alert('Error: ' + error.message);
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                        title="Delete Activity"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -226,7 +261,7 @@ const Documentation = () => {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+                                    <td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                             <AlertCircle size={32} opacity={0.5} />
                                             <p>No activities found for {activeTab}.</p>
@@ -238,6 +273,15 @@ const Documentation = () => {
                     </table>
                 </div>
             </div>
+            <EditActivityModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                activity={selectedActivity}
+                onSave={async (id, type, content) => {
+                    const { error } = await updateActivityContent(id, type, content);
+                    if (error) alert('Error: ' + error.message);
+                }}
+            />
         </div>
     );
 };

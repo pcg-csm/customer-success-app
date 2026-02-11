@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import { ArrowLeft, Save, MessageSquare } from 'lucide-react';
 
 const CreateActivity = () => {
-    const { customers, leads, products, addActivity, isLoading } = useData();
+    const { customers, leads, products, employees, addActivity, isLoading } = useData();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         type: 'customer',
@@ -61,13 +61,15 @@ const CreateActivity = () => {
                                 <option value="customer">Customer</option>
                                 <option value="presales">Presales</option>
                                 <option value="documentation">Documentation</option>
+                                <option value="training">Training</option>
                             </select>
                         </div>
 
                         <div className="form-group">
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                 {formData.type === 'customer' ? 'Select Customer' :
-                                    formData.type === 'presales' ? 'Select Lead' : 'Select Product'}
+                                    formData.type === 'presales' ? 'Select Lead' :
+                                        formData.type === 'training' ? 'Select Employee' : 'Select Product'}
                             </label>
                             <select
                                 className="search-input w-full"
@@ -76,11 +78,14 @@ const CreateActivity = () => {
                                 required
                             >
                                 <option value="">-- Select --</option>
-                                {formData.type === 'customer' && customers.map(c => (
+                                {formData.type === 'customer' && (customers || []).map(c => (
                                     <option key={c.id} value={c.id}>{c.company}</option>
                                 ))}
-                                {formData.type === 'presales' && leads.map(l => (
+                                {formData.type === 'presales' && (leads || []).map(l => (
                                     <option key={l.id} value={l.id}>{l.companyName}</option>
+                                ))}
+                                {formData.type === 'training' && (employees || []).map(e => (
+                                    <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
                                 ))}
                                 {formData.type === 'documentation' && [
                                     'SmartFactory for NetSuite',
@@ -92,6 +97,7 @@ const CreateActivity = () => {
                                 ))}
                             </select>
                         </div>
+
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -126,7 +132,7 @@ const CreateActivity = () => {
                             value={formData.details}
                             onChange={e => handleChange('details', e.target.value)}
                             required
-                            style={{ background: 'rgba(255,255,255,0.05)', color: 'black', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}
+                            style={{ background: '#ffffff', color: '#000000', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}
                         />
                     </div>
 

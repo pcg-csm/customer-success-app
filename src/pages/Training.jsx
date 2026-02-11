@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { GraduationCap, Mail, UserCircle, Check, Edit2, Eye } from 'lucide-react';
+import { GraduationCap, Mail, UserCircle, Check, Edit2, Eye, MessageSquare, Calendar, Trash2 } from 'lucide-react';
+import EditActivityModal from '../components/EditActivityModal';
 
 const Training = () => {
-    const { employees, updateEmployee, isLoading } = useData();
+    const { employees, trainingActivities, updateEmployee, deleteActivity, updateActivityContent, isLoading } = useData();
     const [isEditing, setIsEditing] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
     const [error, setError] = useState(null);
     const [filterCertified, setFilterCertified] = useState(false);
+
+    const [selectedActivity, setSelectedActivity] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const certifications = [
         { key: 'certTulipCertified', label: 'Tulip Certified' },
@@ -42,6 +46,23 @@ const Training = () => {
         }
 
         setUpdatingId(null);
+    };
+
+    const handleDeleteActivity = async (id) => {
+        if (window.confirm('Are you sure you want to delete this activity?')) {
+            const { error } = await deleteActivity(id, 'training');
+            if (error) alert('Error: ' + error.message);
+        }
+    };
+
+    const handleEditActivity = (activity) => {
+        setSelectedActivity({ ...activity, type: 'training' });
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveActivityEdit = async (id, type, content) => {
+        const { error } = await updateActivityContent(id, type, content);
+        if (error) alert('Error: ' + error.message);
     };
 
     if (isLoading) {
@@ -119,7 +140,7 @@ const Training = () => {
                 </div>
             </header>
 
-            <Card style={{ padding: '0', overflowX: 'auto' }}>
+            <Card style={{ padding: '0', overflowX: 'auto', marginBottom: '3rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
@@ -216,6 +237,67 @@ const Training = () => {
                     </tbody>
                 </table>
             </Card>
+
+            <header style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <MessageSquare size={24} style={{ color: 'var(--color-primary)' }} />
+                    Training Activity Log
+                </h2>
+                <p style={{ color: 'var(--color-text-muted)' }}>Latest updates and session notes</p>
+            </header>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+                {trainingActivities.length > 0 ? (
+                    trainingActivities.map(activity => (
+                        <Card key={activity.id} style={{ position: 'relative' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+                                        <GraduationCap size={18} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{activity.employeeName}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <Calendar size={12} /> {new Date(activity.timestamp).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={() => handleEditActivity(activity)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteActivity(`train-${activity.id}`)}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: '#000000', background: '#f8fafc', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                {activity.content}
+                            </p>
+                        </Card>
+                    ))
+                ) : (
+                    <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        No training activities logged yet.
+                    </div>
+                )}
+            </div>
+
+            {isEditModalOpen && (
+                <EditActivityModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    activity={selectedActivity}
+                    onSave={handleSaveActivityEdit}
+                />
+            )}
+
 
             <style>
                 {`

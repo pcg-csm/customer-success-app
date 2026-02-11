@@ -4,6 +4,8 @@ import { LayoutDashboard, Users, User, Settings, Activity, ClipboardCheck, Gradu
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 
+import logo from '../assets/pcg-logo.png';
+
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     const { currentUser, users, setCurrentUser, hasPermission } = useData();
     const { theme, toggleTheme } = useTheme();
@@ -30,7 +32,7 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             label: 'Customers',
             path: '/customers',
             subItems: [
-                { icon: Activity, label: 'Activity', path: '/activity' }
+                { icon: Activity, label: 'Activity', path: '/activity?type=customer' }
             ]
         },
         {
@@ -38,16 +40,23 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             label: 'Presales',
             path: '/presales',
             subItems: [
-                { icon: Activity, label: 'Activity', path: '/activity' }
+                { icon: Activity, label: 'Activity', path: '/activity?type=presales' }
             ]
         },
-        { icon: GraduationCap, label: 'Training', path: '/training' },
+        {
+            icon: GraduationCap,
+            label: 'Training',
+            path: '/training',
+            subItems: [
+                { icon: Activity, label: 'Activity', path: '/activity?type=training' }
+            ]
+        },
         {
             icon: BookOpen,
             label: 'Documentation',
             path: '/documentation',
             subItems: [
-                { icon: Activity, label: 'Activity', path: '/activity' }
+                { icon: Activity, label: 'Activity', path: '/activity?type=documentation' }
             ]
         },
         {
@@ -137,11 +146,18 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
         }}>
             <div style={{ paddingBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {!isCollapsed && (
-                    <div>
-                        <h2 className="text-gradient" style={{ fontSize: '1.5rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                            PCG
-                        </h2>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>Customer Success</p>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <img
+                            src={logo}
+                            alt="PCG Logo"
+                            style={{
+                                height: '32px',
+                                width: 'auto',
+                                objectFit: 'contain',
+                                marginBottom: '0.25rem'
+                            }}
+                        />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', paddingLeft: '2px' }}>Customer Success</p>
                     </div>
                 )}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

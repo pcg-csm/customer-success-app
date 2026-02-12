@@ -5,7 +5,7 @@ import { GraduationCap, Mail, UserCircle, Check, Edit2, Eye, MessageSquare, Cale
 import EditActivityModal from '../components/EditActivityModal';
 
 const Training = () => {
-    const { employees, trainingActivities, updateEmployee, deleteActivity, updateActivityContent, isLoading } = useData();
+    const { employees, trainingActivities, updateEmployee, deleteActivity, updateActivityContent, toggleActivityStatus, isLoading } = useData();
     const [isEditing, setIsEditing] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
     const [error, setError] = useState(null);
@@ -63,6 +63,11 @@ const Training = () => {
     const handleSaveActivityEdit = async (id, type, content) => {
         const { error } = await updateActivityContent(id, type, content);
         if (error) alert('Error: ' + error.message);
+    };
+
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
     };
 
     if (isLoading) {
@@ -248,40 +253,71 @@ const Training = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
                 {trainingActivities.length > 0 ? (
-                    trainingActivities.map(activity => (
-                        <Card key={activity.id} style={{ position: 'relative' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-                                        <GraduationCap size={18} />
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{activity.employeeName}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            <Calendar size={12} /> {new Date(activity.timestamp).toLocaleDateString()}
+                    trainingActivities.map(activity => {
+                        const isDone = activity.isDone;
+                        return (
+                            <Card key={activity.id} style={{
+                                position: 'relative',
+                                display: 'flex',
+                                gap: '1rem',
+                                background: isDone ? 'rgba(34, 197, 94, 0.05)' : 'var(--glass-bg)',
+                                border: isDone ? '1px solid #bbf7d0' : '1px solid var(--glass-border)',
+                                transition: 'all 0.3s ease'
+                            }}>
+                                <div style={{ paddingTop: '0.25rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!isDone}
+                                        onChange={() => handleToggleDone(`train-${activity.id}`, 'training', isDone)}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
+                                        title="Mark as Done"
+                                    />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ padding: '0.5rem', borderRadius: '8px', background: isDone ? 'rgba(34, 197, 94, 0.1)' : 'rgba(168, 85, 247, 0.1)', color: isDone ? '#166534' : '#a855f7' }}>
+                                                <GraduationCap size={18} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: isDone ? '#166534' : 'inherit' }}>{activity.employeeName}</div>
+                                                <div style={{ fontSize: '0.75rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                    <Calendar size={12} /> {new Date(activity.timestamp).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEditActivity(activity)}
+                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteActivity(`train-${activity.id}`)}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
+                                    <p style={{
+                                        lineHeight: '1.6',
+                                        fontSize: '0.9rem',
+                                        color: isDone ? '#166534' : '#000000',
+                                        background: isDone ? '#dcfce7' : '#f8fafc',
+                                        padding: '1rem',
+                                        border: isDone ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        textDecoration: isDone ? 'line-through' : 'none',
+                                        opacity: isDone ? 0.7 : 1
+                                    }}>
+                                        {activity.content}
+                                    </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button
-                                        onClick={() => handleEditActivity(activity)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteActivity(`train-${activity.id}`)}
-                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
-                            <p style={{ lineHeight: '1.6', fontSize: '0.9rem', color: '#000000', background: '#f8fafc', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                                {activity.content}
-                            </p>
-                        </Card>
-                    ))
+                            </Card>
+                        );
+                    })
                 ) : (
                     <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                         No training activities logged yet.

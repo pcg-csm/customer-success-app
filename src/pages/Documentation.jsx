@@ -21,7 +21,8 @@ const Documentation = () => {
         employees,
         isLoading,
         deleteActivity,
-        updateActivityContent
+        updateActivityContent,
+        toggleActivityStatus
     } = useData();
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -75,6 +76,11 @@ const Documentation = () => {
             console.error("Unexpected error saving documentation activity:", err);
             alert(`An unexpected error occurred: ${err.message}`);
         }
+    };
+
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
     };
 
     if (isLoading) return <div className="loading">Loading...</div>;
@@ -200,6 +206,7 @@ const Documentation = () => {
                     <table className="data-table">
                         <thead>
                             <tr>
+                                <th style={{ width: '40px' }}>Status</th>
                                 <th>Date</th>
                                 <th>Team Member</th>
                                 <th>Description</th>
@@ -210,8 +217,21 @@ const Documentation = () => {
                             {filteredActivities.length > 0 ? (
                                 filteredActivities.map(activity => {
                                     const member = employees.find(e => e.id === activity.team_member_id);
+                                    const isDone = activity.is_done;
                                     return (
-                                        <tr key={activity.id}>
+                                        <tr key={activity.id} style={{
+                                            background: isDone ? '#f0fdf4' : 'transparent',
+                                            transition: 'background 0.3s ease'
+                                        }}>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!isDone}
+                                                    onChange={() => handleToggleDone(`doc-${activity.id}`, 'documentation', isDone)}
+                                                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
+                                                    title="Mark as Done"
+                                                />
+                                            </td>
                                             <td style={{ width: '150px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <Calendar size={14} className="text-primary" />
@@ -227,7 +247,12 @@ const Documentation = () => {
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                                                     <FileText size={14} style={{ marginTop: '3px', flexShrink: 0 }} className="text-muted" />
-                                                    <span style={{ lineHeight: '1.5', color: 'black' }}>{activity.description}</span>
+                                                    <span style={{
+                                                        lineHeight: '1.5',
+                                                        color: isDone ? '#166534' : 'black',
+                                                        textDecoration: isDone ? 'line-through' : 'none',
+                                                        opacity: isDone ? 0.7 : 1
+                                                    }}>{activity.description}</span>
                                                 </div>
                                             </td>
                                             <td style={{ textAlign: 'right' }}>

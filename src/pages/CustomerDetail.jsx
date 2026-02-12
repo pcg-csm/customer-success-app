@@ -59,7 +59,7 @@ const SatisfactionGauge = ({ score }) => {
 const CustomerDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { customers, updateCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent } = useData();
+    const { customers, updateCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
     const customer = customers.find(c => String(c.id) === String(id));
     const [activeTab, setActiveTab] = useState('overview');
     const [activities, setActivities] = useState(customer?.activityLog || []);
@@ -90,6 +90,11 @@ const CustomerDetail = () => {
     const handleCancel = () => {
         setFormData(customer);
         setIsEditing(false);
+    };
+
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
     };
 
     const handleAddActivity = () => {
@@ -263,13 +268,17 @@ const CustomerDetail = () => {
                                         onChange={e => setFormData({ ...formData, satisfaction: parseInt(e.target.value) })}
                                         style={{ width: '60px', textAlign: 'center' }}
                                     />
-                                    <input
-                                        className="search-input"
-                                        value={formData.arr}
-                                        onChange={e => setFormData({ ...formData, arr: e.target.value })}
-                                        style={{ textAlign: 'right', width: '120px' }}
-                                        placeholder="$ARR"
-                                    />
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+                                        <input
+                                            type="number"
+                                            className="search-input"
+                                            value={formData.arr}
+                                            onChange={e => setFormData({ ...formData, arr: e.target.value })}
+                                            style={{ textAlign: 'right', width: '120px', paddingLeft: '1.5rem' }}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -288,7 +297,10 @@ const CustomerDetail = () => {
                                     {customer.active ? 'Active' : 'Inactive'}
                                 </div>
                             </div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{customer.arr} <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: 'var(--color-text-muted)' }}>ARR</span></div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>
+                                {customer.arr ? `$${Number(String(customer.arr).replace(/[^0-9.-]+/g, "")).toLocaleString()}` : 'N/A'}
+                                <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>ARR</span>
+                            </div>
                         </>
                     )}
                 </div>
@@ -697,43 +709,74 @@ const CustomerDetail = () => {
                             </Card>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {(activities || []).map(log => (
-                                    <Card key={log.id} style={{ padding: '1.5rem', position: 'relative' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                                                <Calendar size={14} /> {new Date(log.timestamp).toLocaleString()}
-                                                {log.reminder && (
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-warning)', marginLeft: '1rem', background: 'rgba(255,165,0,0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
-                                                        <Clock size={12} /> Reminder: {new Date(log.reminder).toLocaleDateString()}
-                                                    </span>
-                                                )}
+                                {(activities || []).map(log => {
+                                    const isDone = log.isDone;
+                                    return (
+                                        <Card key={log.id} style={{
+                                            padding: '1.5rem',
+                                            position: 'relative',
+                                            display: 'flex',
+                                            gap: '1rem',
+                                            background: isDone ? '#f0fdf4' : 'var(--glass-bg)',
+                                            border: isDone ? '1px solid #bbf7d0' : '1px solid var(--glass-border)',
+                                            transition: 'all 0.3s ease'
+                                        }}>
+                                            <div style={{ paddingTop: '0.25rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!isDone}
+                                                    onChange={() => handleToggleDone(`cust-${log.id}`, 'customer', isDone)}
+                                                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
+                                                    title="Mark as Done"
+                                                />
                                             </div>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button
-                                                    onClick={() => {
-                                                        setSelectedActivity({ ...log, type: 'customer' });
-                                                        setIsEditModalOpen(true);
-                                                    }}
-                                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (window.confirm('Delete this activity?')) {
-                                                            const { error } = await deleteActivity(`cust-${log.id}`, 'customer');
-                                                            if (error) alert('Error: ' + error.message);
-                                                        }
-                                                    }}
-                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                                        <Calendar size={14} /> {new Date(log.timestamp).toLocaleString()}
+                                                        {log.reminder && (
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-warning)', marginLeft: '1rem', background: 'rgba(255,165,0,0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
+                                                                <Clock size={12} /> Reminder: {new Date(log.reminder).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedActivity({ ...log, type: 'customer' });
+                                                                setIsEditModalOpen(true);
+                                                            }}
+                                                            style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (window.confirm('Delete this activity?')) {
+                                                                    const { error } = await deleteActivity(`cust-${log.id}`, 'customer');
+                                                                    if (error) alert('Error: ' + error.message);
+                                                                }
+                                                            }}
+                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <p style={{
+                                                    lineHeight: '1.6',
+                                                    whiteSpace: 'pre-wrap',
+                                                    color: isDone ? '#166534' : 'black',
+                                                    background: isDone ? '#dcfce7' : 'rgba(255,255,255,0.05)',
+                                                    padding: '1rem',
+                                                    borderRadius: '8px',
+                                                    textDecoration: isDone ? 'line-through' : 'none',
+                                                    opacity: isDone ? 0.7 : 1
+                                                }}>{log.content}</p>
                                             </div>
-                                        </div>
-                                        <p style={{ lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'black', background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px' }}>{log.content}</p>
-                                    </Card>
-                                ))}
+                                        </Card>
+                                    );
+                                })}
 
                                 {activities.length === 0 && (
                                     <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem' }}>No activity logged yet.</div>

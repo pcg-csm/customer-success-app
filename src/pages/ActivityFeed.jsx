@@ -6,7 +6,7 @@ import { Calendar, User, ArrowRight, MessageSquare, Plus, Edit2, Trash2 } from '
 import EditActivityModal from '../components/EditActivityModal';
 
 const ActivityFeed = () => {
-    const { customers, documentationActivities, trainingActivities, presalesActivities, employees, deleteActivity, updateActivityContent } = useData();
+    const { allActivities, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialType = searchParams.get('type');
@@ -29,81 +29,9 @@ const ActivityFeed = () => {
         }
     }, [initialType]);
 
-    const allActivities = useMemo(() => {
-        const activities = [];
+    const filteredActivities = useMemo(() => {
+        let result = allActivities || [];
 
-        const ensure8AM = (val) => {
-            if (!val) return null;
-            const timestamp = String(val);
-            if (timestamp.includes('T') && (timestamp.includes(':') || timestamp.includes('Z'))) return timestamp;
-            // Handle YYYY-MM-DD or other date-only formats by appending 8AM
-            return new Date(`${timestamp}T08:00:00`).toISOString();
-        };
-
-        if (filterType === 'All' || filterType === 'Customer' || filterType === 'Next Actions') {
-            (customers || []).forEach(customer => {
-                if (customer.activityLog) {
-                    (customer.activityLog || []).forEach(log => {
-                        activities.push({
-                            ...log,
-                            id: `cust-${log.id}`,
-                            timestamp: ensure8AM(log.timestamp),
-                            type: 'customer',
-                            title: customer.company,
-                            content: log.content,
-                            subTitle: log.customerName,
-                            customerId: customer.id
-                        });
-                    });
-                }
-            });
-        }
-
-        if (filterType === 'All' || filterType === 'Documentation' || filterType === 'Next Actions') {
-            (documentationActivities || []).forEach(doc => {
-                const member = employees.find(e => String(e.id) === String(doc.team_member_id));
-                activities.push({
-                    ...doc,
-                    id: `doc-${doc.id}`,
-                    type: 'documentation',
-                    timestamp: ensure8AM(doc.activity_date),
-                    title: doc.product_type,
-                    content: doc.description,
-                    subTitle: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
-                });
-            });
-        }
-
-        if (filterType === 'All' || filterType === 'Training' || filterType === 'Next Actions') {
-            (trainingActivities || []).forEach(train => {
-                activities.push({
-                    ...train,
-                    id: `train-${train.id}`,
-                    type: 'training',
-                    timestamp: ensure8AM(train.timestamp),
-                    title: 'Training Session',
-                    content: train.content,
-                    subTitle: train.employeeName
-                });
-            });
-        }
-
-        if (filterType === 'All' || filterType === 'Presales' || filterType === 'Next Actions') {
-            (presalesActivities || []).forEach(pre => {
-                activities.push({
-                    ...pre,
-                    id: `pre-${pre.id}`,
-                    type: 'presales',
-                    timestamp: ensure8AM(pre.timestamp),
-                    title: pre.leadName,
-                    content: pre.content,
-                    subTitle: 'Presales Discovery'
-                });
-            });
-        }
-
-        // Final filter for 'Next Actions'
-        let result = activities;
         if (filterType === 'Next Actions') {
             result = result.filter(act => act.nextActionDate || act.next_action_date);
         } else if (filterType !== 'All') {
@@ -111,7 +39,7 @@ const ActivityFeed = () => {
         }
 
         return result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }, [customers, documentationActivities, trainingActivities, presalesActivities, employees, filterType]);
+    }, [allActivities, filterType]);
 
     const handleDelete = async (id, type) => {
         if (window.confirm('Are you sure you want to delete this activity?')) {
@@ -128,6 +56,11 @@ const ActivityFeed = () => {
     const handleSaveEdit = async (id, type, newContent, nextActionDate) => {
         const { error } = await updateActivityContent(id, type, newContent, nextActionDate);
         if (error) alert('Error updating activity: ' + error.message);
+    };
+
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
     };
 
     const getTypeColor = (type) => {
@@ -185,16 +118,38 @@ const ActivityFeed = () => {
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px' }}>
-                {allActivities.length > 0 ? (
-                    allActivities.map((activity) => {
+                {filteredActivities.length > 0 ? (
+                    filteredActivities.map((activity) => {
                         const colors = getTypeColor(activity.type);
+                        const isDone = activity.isDone || activity.is_done;
                         return (
-                            <Card key={activity.id} style={{ display: 'flex', gap: '1.5rem', position: 'relative' }}>
+                            <Card key={activity.id} style={{
+                                display: 'flex',
+                                gap: '1.5rem',
+                                position: 'relative',
+                                background: isDone ? '#f0fdf4' : 'var(--glass-bg)',
+                                border: isDone ? '1px solid #bbf7d0' : '1px solid var(--glass-border)',
+                                transition: 'all 0.3s ease'
+                            }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '40px', paddingTop: '0.25rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!isDone}
+                                        onChange={() => handleToggleDone(activity.id, activity.type, isDone)}
+                                        style={{
+                                            width: '20px',
+                                            height: '20px',
+                                            cursor: 'pointer',
+                                            accentColor: '#22c55e'
+                                        }}
+                                        title="Mark as Done"
+                                    />
+                                </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '80px', paddingTop: '0.25rem' }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', marginBottom: '0.25rem' }}>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: isDone ? '#166534' : 'var(--color-text)', marginBottom: '0.25rem' }}>
                                         {activity.timestamp ? new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'N/A'}
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                    <div style={{ fontSize: '0.75rem', color: isDone ? '#16653499' : 'var(--color-text-muted)' }}>
                                         {activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                     </div>
                                 </div>
@@ -248,7 +203,16 @@ const ActivityFeed = () => {
                                         </div>
                                     </div>
 
-                                    <p style={{ lineHeight: '1.6', color: '#000000', background: '#f8fafc', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                    <p style={{
+                                        lineHeight: '1.6',
+                                        color: isDone ? '#166534' : '#000000',
+                                        background: isDone ? '#dcfce7' : '#f8fafc',
+                                        padding: '1rem',
+                                        border: isDone ? '1px solid #86efac' : '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        textDecoration: isDone ? 'line-through' : 'none',
+                                        opacity: isDone ? 0.7 : 1
+                                    }}>
                                         {activity.content}
                                     </p>
 

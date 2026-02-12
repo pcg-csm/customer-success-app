@@ -7,13 +7,12 @@ import EditActivityModal from '../components/EditActivityModal';
 
 const Dashboard = () => {
     const {
-        customers,
-        documentationActivities,
-        trainingActivities,
-        presalesActivities,
+        allActivities,
         employees,
+        isLoading,
         deleteActivity,
-        updateActivityContent
+        updateActivityContent,
+        toggleActivityStatus
     } = useData();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -24,6 +23,7 @@ const Dashboard = () => {
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
     const getFormattedType = (type) => {
         if (!type) return 'All';
         const formatted = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
@@ -39,67 +39,9 @@ const Dashboard = () => {
         }
     }, [initialType]);
 
-    // Aggregate all activities (copied logic from ActivityFeed)
-    const allActivities = useMemo(() => {
-        const ensure8AM = (val) => {
-            if (!val) return null;
-            const timestamp = String(val);
-            if (timestamp.includes('T') && (timestamp.includes(':') || timestamp.includes('Z'))) return timestamp;
-            return new Date(`${timestamp}T08:00:00`).toISOString();
-        };
-
-        const customerActivities = (customers || []).flatMap(customer =>
-            (customer.activityLog || []).map(log => ({
-                ...log,
-                id: `cust-${log.id}`,
-                type: 'customer',
-                timestamp: ensure8AM(log.timestamp),
-                title: customer.company,
-                content: log.content,
-                subTitle: log.customerName,
-                customerId: customer.id
-            }))
-        );
-
-        const docActivities = (documentationActivities || []).map(doc => {
-            const member = employees.find(e => String(e.id) === String(doc.team_member_id));
-            return {
-                ...doc,
-                id: `doc-${doc.id}`,
-                type: 'documentation',
-                timestamp: ensure8AM(doc.activity_date),
-                title: doc.product_type,
-                content: doc.description,
-                subTitle: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
-            };
-        });
-
-        const trainActivities = (trainingActivities || []).map(train => ({
-            ...train,
-            id: `train-${train.id}`,
-            type: 'training',
-            timestamp: ensure8AM(train.timestamp),
-            title: 'Training Session',
-            content: train.content,
-            subTitle: train.employeeName
-        }));
-
-        const preActivities = (presalesActivities || []).map(pre => ({
-            ...pre,
-            id: `pre-${pre.id}`,
-            type: 'presales',
-            timestamp: ensure8AM(pre.timestamp),
-            title: pre.leadName,
-            content: pre.content,
-            subTitle: 'Presales Discovery'
-        }));
-
-        return [...customerActivities, ...docActivities, ...trainActivities, ...preActivities];
-    }, [customers, documentationActivities, trainingActivities, presalesActivities, employees]);
-
     // Enhanced filtering and sorting
     const filteredActivities = useMemo(() => {
-        let result = allActivities;
+        let result = allActivities || [];
 
         if (filterType === 'Next Actions') {
             result = result.filter(act => {
@@ -132,7 +74,7 @@ const Dashboard = () => {
             );
         }
 
-        return result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return result.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
     }, [allActivities, filterType, searchTerm, startDate, endDate]);
 
     const handleDelete = async (id, type) => {
@@ -152,6 +94,11 @@ const Dashboard = () => {
         if (error) alert('Error updating activity: ' + error.message);
     };
 
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
+    };
+
     const getTypeColor = (type) => {
         switch (type) {
             case 'documentation': return { bg: 'rgba(56, 189, 248, 0.1)', text: '#38bdf8' };
@@ -160,6 +107,10 @@ const Dashboard = () => {
             default: return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981' };
         }
     };
+
+    if (isLoading) {
+        return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading activities...</div>;
+    }
 
     return (
         <div>
@@ -260,42 +211,47 @@ const Dashboard = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px' }}>
                 {filteredActivities.length > 0 ? (
-                    filteredActivities.map((activity) => {
+                    filteredActivities.map((activity, index) => {
                         const colors = getTypeColor(activity.type);
+                        const isDone = activity.isDone || activity.is_done;
                         return (
-                            <Card key={activity.id} style={{ display: 'flex', gap: '1.5rem', position: 'relative' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '80px', paddingTop: '0.25rem' }}>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text)', marginBottom: '0.25rem' }}>
-                                        {activity.timestamp ? new Date(activity.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'N/A'}
-                                    </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                                        {activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                    </div>
+                            <div key={activity.id} className="activity-item" style={{
+                                display: 'flex',
+                                gap: '1rem',
+                                padding: '1.25rem',
+                                borderBottom: index !== filteredActivities.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                                background: isDone ? 'rgba(34, 197, 94, 0.05)' : 'transparent',
+                                transition: 'background 0.3s ease'
+                            }}>
+                                <div style={{ paddingTop: '0.25rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!isDone}
+                                        onChange={() => handleToggleDone(activity.id, activity.type, isDone)}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
+                                        title="Mark as Done"
+                                    />
                                 </div>
-
-                                <div style={{ flex: 1, borderLeft: '1px solid var(--glass-border)', paddingLeft: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <h3 style={{ fontWeight: 'bold', fontSize: '1.125rem' }}>{activity.title}</h3>
-                                                <span style={{
-                                                    fontSize: '0.65rem',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '12px',
-                                                    background: colors.bg,
-                                                    color: colors.text,
-                                                    border: `1px solid ${colors.text}33`,
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.05em'
-                                                }}>
-                                                    {activity.type}
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                                                <User size={14} /> {activity.subTitle}
-                                            </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <span style={{
+                                                background: colors.bg,
+                                                color: colors.text,
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '20px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '600',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}>
+                                                {activity.type}
+                                            </span>
+                                            <span style={{ fontSize: '0.85rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', fontWeight: '500' }}>
+                                                {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <button
                                                 onClick={() => handleEditClick(activity)}
                                                 style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
@@ -310,30 +266,33 @@ const Dashboard = () => {
                                             >
                                                 <Trash2 size={16} />
                                             </button>
-                                            {activity.type === 'customer' && (
-                                                <button
-                                                    onClick={() => navigate(`/customers/${activity.customerId}`)}
-                                                    className="glass-panel"
-                                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginLeft: '0.5rem' }}
-                                                >
-                                                    View Profile <ArrowRight size={12} />
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 
-                                    <p style={{ lineHeight: '1.6', color: '#000000', background: '#f8fafc', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.5rem', color: isDone ? '#166534' : 'inherit' }}>{activity.title}</h3>
+                                    <p style={{ fontSize: '0.875rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', marginBottom: '0.75rem' }}>{activity.subTitle}</p>
+
+                                    <p style={{
+                                        lineHeight: '1.6',
+                                        color: isDone ? '#166534' : '#000000',
+                                        background: isDone ? '#dcfce7' : '#f8fafc',
+                                        padding: '1rem',
+                                        border: isDone ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        textDecoration: isDone ? 'line-through' : 'none',
+                                        opacity: isDone ? 0.7 : 1
+                                    }}>
                                         {activity.content}
                                     </p>
 
                                     {(activity.nextActionDate || activity.next_action_date) && (
-                                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                                        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: isDone ? '#16653499' : '#dc2626', fontSize: '0.875rem', fontWeight: 'bold' }}>
                                             <Calendar size={14} />
                                             Next Action: {new Date(activity.nextActionDate || activity.next_action_date).toLocaleDateString()}
                                         </div>
                                     )}
                                 </div>
-                            </Card>
+                            </div>
                         );
                     })
                 ) : (
@@ -355,4 +314,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

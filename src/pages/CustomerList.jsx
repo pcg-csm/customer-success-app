@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { Search, Filter, Plus, X, Download } from 'lucide-react';
+import { Search, Filter, Plus, X, Download, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 
 const CustomerList = () => {
     const navigate = useNavigate();
@@ -18,6 +18,15 @@ const CustomerList = () => {
     const [filterStatus, setFilterStatus] = useState('All');
     const [filterActive, setFilterActive] = useState('All');
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: 'company', direction: 'asc' });
+
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
 
     const handleAddCustomer = async (e) => {
         e.preventDefault();
@@ -45,6 +54,42 @@ const CustomerList = () => {
         (customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.company.toLowerCase().includes(searchTerm.toLowerCase()))
     );
+
+    const sortedCustomers = React.useMemo(() => {
+        let sortableItems = [...filteredCustomers];
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                let aValue, bValue;
+
+                if (sortConfig.key === 'workstations') {
+                    aValue = a.tulip?.workstations || 0;
+                    bValue = b.tulip?.workstations || 0;
+                } else if (sortConfig.key === 'satisfaction') {
+                    aValue = a.satisfaction || 0;
+                    bValue = b.satisfaction || 0;
+                } else if (sortConfig.key === 'arr') {
+                    const parseArr = (val) => {
+                        if (!val) return 0;
+                        return Number(String(val).replace(/[^0-9.-]+/g, ""));
+                    };
+                    aValue = parseArr(a.arr);
+                    bValue = parseArr(b.arr);
+                } else {
+                    aValue = (a[sortConfig.key] || '').toString().toLowerCase();
+                    bValue = (b[sortConfig.key] || '').toString().toLowerCase();
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [filteredCustomers, sortConfig]);
 
     const handleExport = () => {
         if (filteredCustomers.length === 0) return;
@@ -106,6 +151,34 @@ const CustomerList = () => {
             case 'Onboarding': return 'badge-warning';
             default: return 'badge-neutral';
         }
+    };
+
+    const getSatisfactionColor = (score) => {
+        if (score <= 3) return '#ef4444'; // Red
+        if (score <= 7) return '#f59e0b'; // Amber
+        return '#10b981'; // Green
+    };
+
+    const SatisfactionDots = ({ score }) => {
+        const activeDots = Math.ceil((score || 0) / 2);
+        const color = getSatisfactionColor(score);
+
+        return (
+            <div style={{ display: 'flex', gap: '3px' }}>
+                {[1, 2, 3, 4, 5].map(i => (
+                    <div
+                        key={i}
+                        style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: i <= activeDots ? color : 'rgba(255,255,255,0.1)',
+                            border: i <= activeDots ? 'none' : '1px solid rgba(255,255,255,0.2)'
+                        }}
+                    />
+                ))}
+            </div>
+        );
     };
 
     return (
@@ -212,17 +285,42 @@ const CustomerList = () => {
                 <table>
                     <thead>
                         <tr>
-                            <th>Company</th>
-                            <th>Name</th>
-                            <th>Status</th>
+                            <th onClick={() => handleSort('company')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Company {sortConfig.key === 'company' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Status {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
                             <th>Active</th>
-                            <th>Joined</th>
-                            <th>ARR</th>
+                            <th onClick={() => handleSort('workstations')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Work Stations {sortConfig.key === 'workstations' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('satisfaction')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Satisfaction {sortConfig.key === 'satisfaction' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('arr')} style={{ cursor: 'pointer' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    ARR {sortConfig.key === 'arr' ? (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />) : <ArrowUpDown size={14} style={{ opacity: 0.3 }} />}
+                                </div>
+                            </th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredCustomers.map((customer) => (
+                        {sortedCustomers.map((customer) => (
                             <tr key={customer.id}>
                                 <td style={{ color: 'var(--color-text-muted)' }}>{customer.company}</td>
                                 <td>
@@ -238,8 +336,13 @@ const CustomerList = () => {
                                         {customer.active ? 'Yes' : 'No'}
                                     </span>
                                 </td>
-                                <td style={{ color: 'var(--color-text-muted)' }}>{customer.joined}</td>
-                                <td style={{ fontWeight: '500' }}>{customer.arr}</td>
+                                <td style={{ color: 'var(--color-text-muted)' }}>{customer.tulip?.workstations || 0}</td>
+                                <td>
+                                    <SatisfactionDots score={customer.satisfaction} />
+                                </td>
+                                <td style={{ fontWeight: '500' }}>
+                                    {customer.arr ? `$${Number(String(customer.arr).replace(/[^0-9.-]+/g, "")).toLocaleString()}` : 'N/A'}
+                                </td>
                                 <td>
                                     <button
                                         onClick={() => navigate(`/customers/${customer.id}`)}
@@ -252,7 +355,7 @@ const CustomerList = () => {
                         ))}
                     </tbody>
                 </table>
-                {filteredCustomers.length === 0 && (
+                {sortedCustomers.length === 0 && (
                     <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                         No customers found.
                     </div>
@@ -302,13 +405,17 @@ const CustomerList = () => {
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Projected ARR</label>
-                                <input
-                                    className="search-input"
-                                    style={{ width: '100%' }}
-                                    placeholder="$"
-                                    value={newCustomer.arr}
-                                    onChange={e => setNewCustomer({ ...newCustomer, arr: e.target.value })}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}>$</span>
+                                    <input
+                                        type="number"
+                                        className="search-input"
+                                        style={{ width: '100%', paddingLeft: '1.5rem' }}
+                                        placeholder="0.00"
+                                        value={newCustomer.arr}
+                                        onChange={e => setNewCustomer({ ...newCustomer, arr: e.target.value })}
+                                    />
+                                </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                                 <button type="button" className="glass-panel" onClick={() => setIsAddModalOpen(false)} style={{ padding: '0.75rem 1.5rem' }}>Cancel</button>

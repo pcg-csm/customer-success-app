@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const DataContext = createContext();
@@ -565,6 +565,56 @@ export const DataProvider = ({ children }) => {
     };
 
 
+    const toggleActivityStatus = async (id, type, currentStatus) => {
+        const newStatus = !currentStatus;
+        // Strip type prefix if present (cust-, doc-, train-, pre-)
+        const realId = String(id).replace(/^(cust|doc|train|pre)-/, '');
+        const isLocal = realId.includes('local') || realId.includes('test') || isNaN(Number(realId));
+
+        if (type === 'customer') {
+            const customer = customers.find(c => c.activityLog.some(log => String(log.id) === String(realId)));
+            if (!customer) return { error: 'Activity not found' };
+
+            const updatedLog = customer.activityLog.map(log =>
+                String(log.id) === String(realId) ? { ...log, isDone: newStatus } : log
+            );
+
+            // Skip Supabase if customer ID is local or activity ID is local
+            if (String(customer.id).startsWith('local-') || isLocal) {
+                setCustomers(customers.map(c => c.id === customer.id ? { ...c, activityLog: updatedLog } : c));
+                return { error: null };
+            }
+
+            const { error } = await supabase
+                .from('customers')
+                .update({ activity_log: updatedLog })
+                .eq('id', customer.id);
+
+            if (!error) {
+                setCustomers(customers.map(c => c.id === customer.id ? { ...c, activityLog: updatedLog } : c));
+            }
+            return { error };
+        } else if (type === 'documentation') {
+            if (isLocal) {
+                setDocumentationActivities(documentationActivities.map(a => String(a.id) === String(realId) ? { ...a, is_done: newStatus } : a));
+                return { error: null };
+            }
+
+            const { error } = await supabase.from('documentation_activities').update({ is_done: newStatus }).eq('id', realId);
+            if (!error) {
+                setDocumentationActivities(documentationActivities.map(a => String(a.id) === String(realId) ? { ...a, is_done: newStatus } : a));
+            }
+            return { error };
+        } else if (type === 'training') {
+            setTrainingActivities(trainingActivities.map(a => String(a.id) === String(realId) ? { ...a, isDone: newStatus } : a));
+            return { error: null };
+        } else if (type === 'presales') {
+            setPresalesActivities(presalesActivities.map(a => String(a.id) === String(realId) ? { ...a, isDone: newStatus } : a));
+            return { error: null };
+        }
+        return { error: 'Unknown activity type' };
+    };
+
     const addUser = async (user) => {
         // Note: New users should ideally be invited via Supabase Auth Dashboard
         // This just creates the profile record
@@ -608,8 +658,8 @@ export const DataProvider = ({ children }) => {
     const getEmployee = (id) => employees.find(e => e.id === id);
 
     const addDocumentationActivity = async (activity) => {
-        // Separate the field that might not exist in DB and sanitize the bigint field
-        const { next_action_date, team_member_id, ...rest } = activity;
+        // Separate fields that might not exist in DB and sanitize the bigint field
+        const { next_action_date, is_done, team_member_id, ...rest } = activity;
 
         // Sanitize team_member_id: only send if it's a valid integer and not a local ID string
         const sanitizedMemberId = (team_member_id && !isNaN(team_member_id) && !String(team_member_id).includes('local'))
@@ -769,9 +819,73 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const allActivities = useMemo(() => {
+        const activities = [];
+        const ensure8AM = (val) => {
+            if (!val) return null;
+            const timestamp = String(val);
+            if (timestamp.includes('T') && (timestamp.includes(':') || timestamp.includes('Z'))) return timestamp;
+            return new Date(`${timestamp}T08:00:00`).toISOString();
+        };
+
+        (customers || []).forEach(customer => {
+            (customer.activityLog || []).forEach(log => {
+                activities.push({
+                    ...log,
+                    id: `cust-${log.id}`,
+                    timestamp: ensure8AM(log.timestamp),
+                    type: 'customer',
+                    title: customer.company,
+                    content: log.content,
+                    subTitle: log.customerName,
+                    customerId: customer.id
+                });
+            });
+        });
+
+        (documentationActivities || []).forEach(doc => {
+            const member = employees.find(e => String(e.id) === String(doc.team_member_id));
+            activities.push({
+                ...doc,
+                id: `doc-${doc.id}`,
+                type: 'documentation',
+                timestamp: ensure8AM(doc.activity_date),
+                title: doc.product_type,
+                content: doc.description,
+                subTitle: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
+            });
+        });
+
+        (trainingActivities || []).forEach(train => {
+            activities.push({
+                ...train,
+                id: `train-${train.id}`,
+                type: 'training',
+                timestamp: ensure8AM(train.timestamp),
+                title: 'Training Session',
+                content: train.content,
+                subTitle: train.employeeName
+            });
+        });
+
+        (presalesActivities || []).forEach(pre => {
+            activities.push({
+                ...pre,
+                id: `pre-${pre.id}`,
+                type: 'presales',
+                timestamp: ensure8AM(pre.timestamp),
+                title: pre.leadName,
+                content: pre.content,
+                subTitle: 'Presales Discovery'
+            });
+        });
+
+        return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }, [customers, documentationActivities, trainingActivities, presalesActivities, employees]);
 
     return (
         <DataContext.Provider value={{
+            allActivities,
             customers,
             products,
             employees,
@@ -796,6 +910,7 @@ export const DataProvider = ({ children }) => {
             addDocumentationActivity,
             deleteActivity,
             updateActivityContent,
+            toggleActivityStatus,
             addUser,
             removeUser,
             login,

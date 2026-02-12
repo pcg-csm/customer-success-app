@@ -37,7 +37,7 @@ const INITIAL_FORM_STATE = {
 };
 
 const Presales = () => {
-    const { leads, presalesActivities, addLead, updateLead, removeLead, hasPermission, deleteActivity, updateActivityContent } = useData();
+    const { leads, presalesActivities, addLead, updateLead, removeLead, hasPermission, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
     const [view, setView] = useState('list'); // 'list' or 'form'
     const [activeTab, setActiveTab] = useState('lead');
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
@@ -94,6 +94,11 @@ const Presales = () => {
     const handleSaveActivityEdit = async (id, type, content) => {
         const { error } = await updateActivityContent(id, type, content);
         if (error) alert('Error: ' + error.message);
+    };
+
+    const handleToggleDone = async (id, type, currentStatus) => {
+        const { error } = await toggleActivityStatus(id, type, currentStatus);
+        if (error) alert('Error updating status: ' + error.message);
     };
 
     const filteredLeads = leads.filter(lead =>
@@ -565,34 +570,65 @@ ${formData.demoNotes}
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {filteredActivities.length > 0 ? (
-                                    filteredActivities.map(activity => (
-                                        <div key={activity.id} className="glass-panel" style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                                                    <Calendar size={14} /> {new Date(activity.timestamp).toLocaleString()}
+                                    filteredActivities.map(activity => {
+                                        const isDone = activity.isDone;
+                                        return (
+                                            <div key={activity.id} className="glass-panel" style={{
+                                                padding: '1rem',
+                                                background: isDone ? 'rgba(34, 197, 94, 0.05)' : 'rgba(255,255,255,0.02)',
+                                                display: 'flex',
+                                                gap: '1rem',
+                                                border: isDone ? '1px solid #bbf7d0' : '1px solid var(--glass-border)',
+                                                transition: 'all 0.3s ease'
+                                            }}>
+                                                <div style={{ paddingTop: '0.25rem' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!isDone}
+                                                        onChange={() => handleToggleDone(`pre-${activity.id}`, 'presales', isDone)}
+                                                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
+                                                        title="Mark as Done"
+                                                    />
                                                 </div>
-                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleEditActivity(activity)}
-                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
-                                                    >
-                                                        <Edit2 size={14} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDeleteActivity(`pre-${activity.id}`)}
-                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                                                            <Calendar size={14} /> {new Date(activity.timestamp).toLocaleString()}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEditActivity(activity)}
+                                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                                            >
+                                                                <Edit2 size={14} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteActivity(`pre-${activity.id}`)}
+                                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <p style={{
+                                                        lineHeight: '1.5',
+                                                        fontSize: '0.9rem',
+                                                        color: isDone ? '#166534' : '#000000',
+                                                        background: isDone ? '#dcfce7' : '#f8fafc',
+                                                        padding: '0.75rem',
+                                                        border: isDone ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                                                        borderRadius: '4px',
+                                                        textDecoration: isDone ? 'line-through' : 'none',
+                                                        opacity: isDone ? 0.7 : 1
+                                                    }}>
+                                                        {activity.content}
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <p style={{ lineHeight: '1.5', fontSize: '0.9rem', color: '#000000', background: '#f8fafc', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                                                {activity.content}
-                                            </p>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                                         No activities logged for this lead.

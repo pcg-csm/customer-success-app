@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, User, Settings, Activity, ClipboardCheck, GraduationCap, BookOpen, ChevronLeft, ChevronRight, LogOut, ChevronUp, ChevronDown, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, User, Settings, Activity, ClipboardCheck, GraduationCap, BookOpen, ChevronLeft, ChevronRight, LogOut, ChevronUp, ChevronDown, Sun, Moon, Calendar } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -57,6 +57,14 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
             path: '/documentation',
             subItems: [
                 { icon: Activity, label: 'Activity', path: '/activity?type=documentation' }
+            ]
+        },
+        {
+            icon: Calendar,
+            label: 'Scheduler',
+            path: '/scheduler',
+            subItems: [
+                { icon: Activity, label: 'Activity', path: '/activity?type=scheduler' }
             ]
         },
         {

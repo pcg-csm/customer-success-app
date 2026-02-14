@@ -66,7 +66,6 @@ const mapLeadFromDB = (l) => ({
     userCount: l.user_count,
     currentErp: l.current_erp,
     painPoints: l.pain_points,
-    timeline: l.timeline,
     budgetStatus: l.budget_status,
     decisionProcess: l.decision_process,
     nextStepDate: l.next_step_date,
@@ -82,31 +81,6 @@ const mapLeadFromDB = (l) => ({
     coMan: l.co_man,
     equipmentCount: l.equipment_count,
     manualStations: l.manual_stations,
-    opcMachines: l.opc_machines,
-    workCells: l.work_cells,
-    oldMachines: l.old_machines,
-    hasOpcServer: l.has_opc_server,
-    controlsEngineer: l.controls_engineer,
-    scada: l.scada,
-    scadaSystem: l.scada_system,
-    scales: l.scales,
-    scaleVendor: l.scale_vendor,
-    opcDirectory: l.opc_directory,
-    directoryFormat: l.directory_format,
-    signals: l.signals || {},
-    netsuiteEdition: l.netsuite_edition,
-    scheduling: l.scheduling,
-    schedulingSystem: l.scheduling_system,
-    customizations: l.customizations,
-    customizationsDesc: l.customizations_desc,
-    wms: l.wms,
-    wmsSystem: l.wms_system,
-    qms: l.qms,
-    qmsSystem: l.qms_system,
-    labeling: l.labeling,
-    zebraPrinters: l.zebra_printers,
-    regulatory: l.regulatory,
-    validation: l.validation,
     batchProcess: l.batch_process,
     ebr: l.ebr,
     continuousImprovement: l.continuous_improvement,
@@ -118,7 +92,9 @@ const mapLeadFromDB = (l) => ({
     downtime: l.downtime,
     materialLoss: l.material_loss,
     laborCodes: l.labor_codes,
-    demoNotes: l.demo_notes
+    demoNotes: l.demo_notes,
+    opportunityBroughtBy: l.opportunity_brought_by,
+    discoveryNotes: l.discovery_notes
 });
 
 const mapLeadToDB = (l) => ({
@@ -129,7 +105,6 @@ const mapLeadToDB = (l) => ({
     user_count: nullifyEmpty(l.userCount),
     current_erp: l.currentErp,
     pain_points: l.painPoints,
-    timeline: l.timeline,
     budget_status: l.budgetStatus,
     decision_process: l.decisionProcess,
     next_step_date: nullifyEmpty(l.nextStepDate),
@@ -145,31 +120,6 @@ const mapLeadToDB = (l) => ({
     co_man: l.coMan,
     equipment_count: nullifyEmpty(l.equipmentCount),
     manual_stations: nullifyEmpty(l.manualStations),
-    opc_machines: nullifyEmpty(l.opcMachines),
-    work_cells: l.workCells,
-    old_machines: nullifyEmpty(l.oldMachines),
-    has_opc_server: l.hasOpcServer,
-    controls_engineer: l.controlsEngineer,
-    scada: l.scada,
-    scada_system: l.scadaSystem,
-    scales: l.scales,
-    scale_vendor: l.scaleVendor,
-    opc_directory: l.opcDirectory,
-    directory_format: l.directoryFormat,
-    signals: l.signals,
-    netsuite_edition: l.netsuiteEdition,
-    scheduling: l.scheduling,
-    scheduling_system: l.schedulingSystem,
-    customizations: l.customizations,
-    customizations_desc: l.customizationsDesc,
-    wms: l.wms,
-    wms_system: l.wmsSystem,
-    qms: l.qms,
-    qms_system: l.qmsSystem,
-    labeling: l.labeling,
-    zebra_printers: l.zebraPrinters,
-    regulatory: l.regulatory,
-    validation: l.validation,
     batch_process: l.batchProcess,
     ebr: l.ebr,
     continuous_improvement: l.continuousImprovement,
@@ -181,7 +131,9 @@ const mapLeadToDB = (l) => ({
     downtime: l.downtime,
     material_loss: l.materialLoss,
     labor_codes: l.laborCodes,
-    demo_notes: l.demoNotes
+    demo_notes: l.demoNotes,
+    opportunity_brought_by: l.opportunityBroughtBy,
+    discovery_notes: l.discoveryNotes
 });
 
 const mapEmployeeFromDB = (e) => ({
@@ -230,6 +182,7 @@ export const DataProvider = ({ children }) => {
     const [documentationActivities, setDocumentationActivities] = useState([]);
     const [trainingActivities, setTrainingActivities] = useState([]);
     const [presalesActivities, setPresalesActivities] = useState([]);
+    const [schedulerActivities, setSchedulerActivities] = useState([]);
 
     const [currentUser, setCurrentUser] = useState({
         id: 'mock-id',
@@ -275,6 +228,7 @@ export const DataProvider = ({ children }) => {
                 supabase.from('employees').select('*'),
                 supabase.from('leads').select('*').order('created_at', { ascending: false }),
                 supabase.from('documentation_activities').select('*').order('created_at', { ascending: false }),
+                supabase.from('scheduler_activities').select('*').order('created_at', { ascending: false }),
                 supabase.from('profiles').select('*').order('first_name')
             ]);
 
@@ -561,6 +515,15 @@ export const DataProvider = ({ children }) => {
             };
             setPresalesActivities(prev => [newLog, ...prev]);
             return { error: null };
+        } else if (type === 'scheduler') {
+            const newLog = {
+                id: Date.now(),
+                timestamp,
+                content: details,
+                nextActionDate: formattedNextActionDate
+            };
+            setSchedulerActivities(prev => [newLog, ...prev]);
+            return { error: null };
         }
     };
 
@@ -610,6 +573,9 @@ export const DataProvider = ({ children }) => {
             return { error: null };
         } else if (type === 'presales') {
             setPresalesActivities(presalesActivities.map(a => String(a.id) === String(realId) ? { ...a, isDone: newStatus } : a));
+            return { error: null };
+        } else if (type === 'scheduler') {
+            setSchedulerActivities(schedulerActivities.map(a => String(a.id) === String(realId) ? { ...a, isDone: newStatus } : a));
             return { error: null };
         }
         return { error: 'Unknown activity type' };
@@ -758,6 +724,10 @@ export const DataProvider = ({ children }) => {
             const realId = id.startsWith('pre-') ? id.split('-')[1] : id;
             setPresalesActivities(presalesActivities.filter(a => String(a.id) !== String(realId)));
             return { error: null };
+        } else if (type === 'scheduler') {
+            const realId = id.startsWith('sched-') ? id.split('-')[1] : id;
+            setSchedulerActivities(schedulerActivities.filter(a => String(a.id) !== String(realId)));
+            return { error: null };
         }
     };
 
@@ -815,6 +785,10 @@ export const DataProvider = ({ children }) => {
         } else if (type === 'presales') {
             const realId = id.startsWith('pre-') ? id.split('-')[1] : id;
             setPresalesActivities(presalesActivities.map(a => String(a.id) === String(realId) ? { ...a, content, nextActionDate: formattedNextDate } : a));
+            return { error: null };
+        } else if (type === 'scheduler') {
+            const realId = id.startsWith('sched-') ? id.split('-')[1] : id;
+            setSchedulerActivities(schedulerActivities.map(a => String(a.id) === String(realId) ? { ...a, content, nextActionDate: formattedNextDate } : a));
             return { error: null };
         }
     };
@@ -880,8 +854,20 @@ export const DataProvider = ({ children }) => {
             });
         });
 
+        (schedulerActivities || []).forEach(sched => {
+            activities.push({
+                ...sched,
+                id: `sched-${sched.id}`,
+                type: 'scheduler',
+                timestamp: ensure8AM(sched.timestamp),
+                title: 'Scheduled Item',
+                content: sched.content,
+                subTitle: 'Scheduler'
+            });
+        });
+
         return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }, [customers, documentationActivities, trainingActivities, presalesActivities, employees]);
+    }, [customers, documentationActivities, trainingActivities, presalesActivities, schedulerActivities, employees]);
 
     return (
         <DataContext.Provider value={{
@@ -894,6 +880,7 @@ export const DataProvider = ({ children }) => {
             documentationActivities,
             trainingActivities,
             presalesActivities,
+            schedulerActivities,
             currentUser,
             isLoading,
             addProduct,

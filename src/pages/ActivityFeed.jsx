@@ -68,7 +68,8 @@ const ActivityFeed = () => {
             case 'documentation': return { bg: 'rgba(56, 189, 248, 0.1)', text: '#38bdf8' };
             case 'training': return { bg: 'rgba(168, 85, 247, 0.1)', text: '#a855f7' };
             case 'presales': return { bg: 'rgba(251, 191, 36, 0.1)', text: '#fbbf24' };
-            default: return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981' };
+            case 'scheduler': return { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981' };
+            default: return { bg: 'rgba(148, 163, 184, 0.1)', text: '#94a3b8' };
         }
     };
 
@@ -85,7 +86,7 @@ const ActivityFeed = () => {
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                            {['All', 'Customer', 'Documentation', 'Training', 'Presales', 'Next Actions'].map(type => (
+                            {['All', 'Customer', 'Documentation', 'Training', 'Presales', 'Scheduler', 'Next Actions'].map(type => (
                                 <button
                                     key={type}
                                     onClick={() => setFilterType(type)}

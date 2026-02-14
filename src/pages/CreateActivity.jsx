@@ -62,6 +62,7 @@ const CreateActivity = () => {
                                 <option value="presales">Presales</option>
                                 <option value="documentation">Documentation</option>
                                 <option value="training">Training</option>
+                                <option value="scheduler">Scheduler</option>
                             </select>
                         </div>
 
@@ -69,7 +70,8 @@ const CreateActivity = () => {
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                                 {formData.type === 'customer' ? 'Select Customer' :
                                     formData.type === 'presales' ? 'Select Lead' :
-                                        formData.type === 'training' ? 'Select Employee' : 'Select Product'}
+                                        formData.type === 'training' ? 'Select Employee' :
+                                            formData.type === 'scheduler' ? 'Scheduler Area' : 'Select Product'}
                             </label>
                             <select
                                 className="search-input w-full"
@@ -95,6 +97,9 @@ const CreateActivity = () => {
                                 ].map(p => (
                                     <option key={p} value={p}>{p}</option>
                                 ))}
+                                {formData.type === 'scheduler' && (
+                                    <option value="General">General Scheduler</option>
+                                )}
                             </select>
                         </div>
 

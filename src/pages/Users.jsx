@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import Card from '../components/Card';
-import { User, Plus, Trash2, Mail, Shield, Key } from 'lucide-react';
+import { User, Plus, Trash2, Mail, Shield, Key, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 const Users = () => {
     const { users, addUser, removeUser, currentUser, hasPermission } = useData();
     const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', roles: [] });
+    const [showPassword, setShowPassword] = useState(false);
 
     const roleOptions = [
         { value: 'ADMIN', label: 'Admin (Full System Access)' },
@@ -56,6 +57,22 @@ const Users = () => {
                 </h1>
                 <p style={{ color: 'var(--color-text-muted)' }}>Define and manage application users and their access levels.</p>
             </header>
+
+            <div style={{
+                marginBottom: '2rem',
+                padding: '1rem',
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'center'
+            }}>
+                <AlertCircle size={20} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-main)', lineHeight: '1.5' }}>
+                    <strong>Administrative Note:</strong> Defining a user here only creates their application profile and roles. To enable login for a new team member, you must first create their account in the <strong>Supabase Auth Dashboard</strong> using the same email address.
+                </p>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
                 {/* Add User Form */}
@@ -109,13 +126,33 @@ const Users = () => {
                                 <Key size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                                 <input
                                     className="search-input"
-                                    style={{ width: '100%', paddingLeft: '2.5rem' }}
-                                    type="password"
+                                    style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                                    type={showPassword ? "text" : "password"}
                                     value={newUser.password}
                                     onChange={e => setNewUser({ ...newUser, password: e.target.value })}
                                     placeholder="••••••••"
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '10px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--color-text-muted)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '4px'
+                                    }}
+                                    title={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
                         <div>

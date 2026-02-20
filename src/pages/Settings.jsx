@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
-import { Plus, Trash2, Save, User, Box, Check, X, Edit2, UserCircle } from 'lucide-react';
+import { Plus, Trash2, Save, User, Box, Check, X, Edit2, UserCircle, ShieldCheck, Eye, EyeOff, Key } from 'lucide-react';
 
 const Settings = () => {
     const {
         products, addProduct, removeProduct,
         employees, addEmployee, removeEmployee, updateEmployee,
-        users, addUser, removeUser, currentUser
+        users, addUser, removeUser, currentUser, changePassword
     } = useData();
     const [activeTab, setActiveTab] = useState('data');
 
@@ -16,6 +16,11 @@ const Settings = () => {
     const [newEmployee, setNewEmployee] = useState({ firstName: '', lastName: '', role: 'Support', email: '', title: '' });
     const [editingId, setEditingId] = useState(null);
     const [editValues, setEditValues] = useState({});
+
+    // Password state
+    const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' });
+    const [showPasswords, setShowPasswords] = useState(false);
+    const [passwordStatus, setPasswordStatus] = useState({ loading: false, message: '', type: '' });
 
     const handleAddProduct = () => {
         if (newProduct.trim()) {
@@ -49,6 +54,28 @@ const Settings = () => {
         }
     };
 
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            setPasswordStatus({ loading: false, message: 'Passwords do not match.', type: 'error' });
+            return;
+        }
+        if (passwordData.newPassword.length < 6) {
+            setPasswordStatus({ loading: false, message: 'Password must be at least 6 characters.', type: 'error' });
+            return;
+        }
+
+        setPasswordStatus({ loading: true, message: '', type: '' });
+        const result = await changePassword(passwordData.newPassword);
+
+        if (result.success) {
+            setPasswordStatus({ loading: false, message: 'Password updated successfully!', type: 'success' });
+            setPasswordData({ newPassword: '', confirmPassword: '' });
+        } else {
+            setPasswordStatus({ loading: false, message: result.error, type: 'error' });
+        }
+    };
+
     return (
         <div>
             <header style={{ marginBottom: '2rem' }}>
@@ -57,7 +84,8 @@ const Settings = () => {
             </header>
 
             <div className="tabs">
-                <button className={`tab active`} onClick={() => setActiveTab('data')}>Data Management</button>
+                <button className={`tab ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')}>Data Management</button>
+                <button className={`tab ${activeTab === 'security' ? 'active' : ''}`} onClick={() => setActiveTab('security')}>Account Security</button>
             </div>
 
             <div className="tab-content">
@@ -260,6 +288,93 @@ const Settings = () => {
                                     </tbody>
                                 </table>
                             </div>
+                        </Card>
+                    </div>
+                )}
+
+                {activeTab === 'security' && (
+                    <div style={{ maxWidth: '600px' }}>
+                        <Card>
+                            <h3 style={{ marginBottom: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <ShieldCheck size={20} /> Update Password
+                            </h3>
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                                Ensure your account is using a long, random password to stay secure.
+                            </p>
+
+                            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>NEW PASSWORD</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Key size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                        <input
+                                            className="search-input"
+                                            style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                                            type={showPasswords ? "text" : "password"}
+                                            value={passwordData.newPassword}
+                                            onChange={e => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                            placeholder="••••••••"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>CONFIRM NEW PASSWORD</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <Key size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                        <input
+                                            className="search-input"
+                                            style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                                            type={showPasswords ? "text" : "password"}
+                                            value={passwordData.confirmPassword}
+                                            onChange={e => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                            placeholder="••••••••"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswords(!showPasswords)}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '10px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--color-text-muted)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {passwordStatus.message && (
+                                    <div style={{
+                                        padding: '0.75rem',
+                                        borderRadius: '6px',
+                                        fontSize: '0.85rem',
+                                        background: passwordStatus.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: passwordStatus.type === 'success' ? '#4ade80' : '#f87171',
+                                        border: passwordStatus.type === 'success' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                                    }}>
+                                        {passwordStatus.message}
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={passwordStatus.loading}
+                                    style={{ marginTop: '0.5rem', height: '3rem', fontWeight: 'bold' }}
+                                >
+                                    {passwordStatus.loading ? 'Updating...' : 'Update Password'}
+                                </button>
+                            </form>
                         </Card>
                     </div>
                 )}

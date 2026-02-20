@@ -329,6 +329,15 @@ export const DataProvider = ({ children }) => {
         setCurrentUser(null);
     };
 
+    const changePassword = async (newPassword) => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) {
+            console.error('Change password error:', error.message);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    };
+
     const addProduct = async (productName) => {
         const { data, error } = await supabase.from('products').insert([{ name: productName }]).select();
         if (!error && data) {
@@ -939,6 +948,7 @@ export const DataProvider = ({ children }) => {
             removeUser,
             login,
             logout,
+            changePassword,
             hasPermission,
             setCurrentUser,
             getEmployee,

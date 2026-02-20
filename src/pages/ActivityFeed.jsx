@@ -6,7 +6,7 @@ import { Calendar, User, ArrowRight, MessageSquare, Plus, Edit2, Trash2 } from '
 import EditActivityModal from '../components/EditActivityModal';
 
 const ActivityFeed = () => {
-    const { allActivities, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
+    const { allActivities, employees, deleteActivity, updateActivityContent, toggleActivityStatus, hasPermission } = useData();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialType = searchParams.get('type');
@@ -41,7 +41,23 @@ const ActivityFeed = () => {
         return result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }, [allActivities, filterType]);
 
+    const canManageActivity = (type) => {
+        if (!type) return false;
+        const permissionMap = {
+            'documentation': 'MANAGE_DOCUMENTATION',
+            'training': 'MANAGE_TRAINING',
+            'scheduler': 'MANAGE_SCHEDULER',
+            'presales': 'CREATE_LEAD',
+            'customer': 'MANAGE_CUSTOMERS'
+        };
+        return hasPermission(permissionMap[type.toLowerCase()]);
+    };
+
     const handleDelete = async (id, type) => {
+        if (!canManageActivity(type)) {
+            alert('You do not have permission to delete this activity.');
+            return;
+        }
         if (window.confirm('Are you sure you want to delete this activity?')) {
             const { error } = await deleteActivity(id, type);
             if (error) alert('Error deleting activity: ' + error.message);
@@ -49,6 +65,10 @@ const ActivityFeed = () => {
     };
 
     const handleEditClick = (activity) => {
+        if (!canManageActivity(activity.type)) {
+            alert('You do not have permission to edit this activity.');
+            return;
+        }
         setSelectedActivity(activity);
         setIsEditModalOpen(true);
     };
@@ -59,6 +79,10 @@ const ActivityFeed = () => {
     };
 
     const handleToggleDone = async (id, type, currentStatus) => {
+        if (!canManageActivity(type)) {
+            alert('You do not have permission to update this activity.');
+            return;
+        }
         const { error } = await toggleActivityStatus(id, type, currentStatus);
         if (error) alert('Error updating status: ' + error.message);
     };
@@ -141,9 +165,10 @@ const ActivityFeed = () => {
                                             width: '20px',
                                             height: '20px',
                                             cursor: 'pointer',
-                                            accentColor: '#22c55e'
+                                            accentColor: '#22c55e',
+                                            opacity: canManageActivity(activity.type) ? 1 : 0.5
                                         }}
-                                        title="Mark as Done"
+                                        title={canManageActivity(activity.type) ? "Mark as Done" : "Permission Denied"}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '80px', paddingTop: '0.25rem' }}>
@@ -180,14 +205,14 @@ const ActivityFeed = () => {
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <button
                                                 onClick={() => handleEditClick(activity)}
-                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', opacity: canManageActivity(activity.type) ? 1 : 0.3 }}
                                                 title="Edit Activity"
                                             >
                                                 <Edit2 size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(activity.id, activity.type)}
-                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', opacity: canManageActivity(activity.type) ? 1 : 0.3 }}
                                                 title="Delete Activity"
                                             >
                                                 <Trash2 size={16} />

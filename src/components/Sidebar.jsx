@@ -246,7 +246,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                         width: '32px',
                         height: '32px',
                         borderRadius: '50%',
-                        background: currentUser.role === 'ADMIN' ? 'var(--color-success)' : 'var(--color-primary)',
                         flexShrink: 0,
                         display: 'flex',
                         alignItems: 'center',
@@ -257,12 +256,12 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                     }}>
                         {currentUser.firstName[0]}
                     </div>
-                    {!isCollapsed && (
-                        <div style={{ overflow: 'hidden', flex: 1 }}>
-                            <p style={{ fontSize: '0.875rem', fontWeight: '500', whiteSpace: 'nowrap' }}>{currentUser.firstName} {currentUser.lastName}</p>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>{currentUser.role}</p>
-                        </div>
-                    )}
+                    <div style={{ overflow: 'hidden', flex: 1 }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: '500', whiteSpace: 'nowrap' }}>{currentUser.firstName} {currentUser.lastName}</p>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--color-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {Array.isArray(currentUser.roles) ? currentUser.roles.join(', ') : (currentUser.role || 'No Role')}
+                        </p>
+                    </div>
                     {!isCollapsed && <ChevronUp size={16} style={{ color: 'var(--color-text-muted)', transform: showUserSwitcher ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s' }} />}
                 </div>
 
@@ -299,7 +298,9 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: user.role === 'ADMIN' ? 'var(--color-success)' : 'var(--color-primary)' }}></div>
                                 <div style={{ flex: 1 }}>
                                     <div>{user.firstName} {user.lastName}</div>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>{user.role}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {Array.isArray(user.roles) ? user.roles.join(', ') : (user.role || 'No Role')}
+                                    </div>
                                 </div>
                             </div>
                         ))}

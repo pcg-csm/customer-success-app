@@ -5,7 +5,7 @@ import { GraduationCap, Mail, UserCircle, Check, Edit2, Eye, MessageSquare, Cale
 import EditActivityModal from '../components/EditActivityModal';
 
 const Training = () => {
-    const { employees, trainingActivities, updateEmployee, deleteActivity, updateActivityContent, toggleActivityStatus, isLoading } = useData();
+    const { employees, trainingActivities, updateEmployee, deleteActivity, updateActivityContent, toggleActivityStatus, isLoading, hasPermission } = useData();
     const [isEditing, setIsEditing] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
     const [error, setError] = useState(null);
@@ -128,9 +128,15 @@ const Training = () => {
                     </label>
 
                     <button
-                        onClick={() => setIsEditing(!isEditing)}
+                        onClick={() => {
+                            if (hasPermission('MANAGE_TRAINING')) {
+                                setIsEditing(!isEditing);
+                            } else {
+                                alert('You do not have permission to edit certifications.');
+                            }
+                        }}
                         className={isEditing ? 'btn-primary' : 'btn-secondary'}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', opacity: hasPermission('MANAGE_TRAINING') ? 1 : 0.5 }}
                     >
                         {isEditing ? (
                             <>
@@ -288,14 +294,26 @@ const Training = () => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <button
-                                                onClick={() => handleEditActivity(activity)}
-                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    if (hasPermission('MANAGE_TRAINING')) {
+                                                        handleEditActivity(activity);
+                                                    } else {
+                                                        alert('Permission denied.');
+                                                    }
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', opacity: hasPermission('MANAGE_TRAINING') ? 1 : 0.3 }}
                                             >
                                                 <Edit2 size={16} />
                                             </button>
                                             <button
-                                                onClick={() => handleDeleteActivity(`train-${activity.id}`)}
-                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                onClick={() => {
+                                                    if (hasPermission('MANAGE_TRAINING')) {
+                                                        handleDeleteActivity(`train-${activity.id}`);
+                                                    } else {
+                                                        alert('Permission denied.');
+                                                    }
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: hasPermission('MANAGE_TRAINING') ? 1 : 0.3 }}
                                             >
                                                 <Trash2 size={16} />
                                             </button>

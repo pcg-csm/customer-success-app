@@ -57,7 +57,7 @@ const Settings = () => {
             </header>
 
             <div className="tabs">
-                <button className={`tab ${activeTab === 'data' ? 'active' : ''} `} onClick={() => setActiveTab('data')}>Data Management</button>
+                <button className={`tab active`} onClick={() => setActiveTab('data')}>Data Management</button>
             </div>
 
             <div className="tab-content">
@@ -264,68 +264,6 @@ const Settings = () => {
                     </div>
                 )}
 
-                {activeTab === 'users' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-                        <Card>
-                            <h3 style={{ marginBottom: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <User size={20} /> Add New User
-                            </h3>
-                            <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>First Name</label>
-                                        <input className="search-input" style={{ width: '100%' }} value={newUser.firstName} onChange={e => setNewUser({ ...newUser, firstName: e.target.value })} required />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Last Name</label>
-                                        <input className="search-input" style={{ width: '100%' }} value={newUser.lastName} onChange={e => setNewUser({ ...newUser, lastName: e.target.value })} required />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Email Address</label>
-                                    <input className="search-input" style={{ width: '100%' }} type="email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} required />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Password</label>
-                                    <input className="search-input" style={{ width: '100%' }} type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} required />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.25rem' }}>Role</label>
-                                    <select className="search-input" style={{ width: '100%' }} value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
-                                        <option value="ADMIN">Admin (Full Access)</option>
-                                        <option value="VIEWER">Viewer (Read Only)</option>
-                                        <option value="LEAD_CREATOR">Lead Creator (Create Leads Only)</option>
-                                    </select>
-                                </div>
-                                <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem' }}>Create User Account</button>
-                            </form>
-                        </Card>
-
-                        <Card>
-                            <h3 style={{ marginBottom: '1.5rem', fontWeight: 'bold' }}>Active Users ({users.length})</h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                {users.map(user => (
-                                    <div key={user.id} className="glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: user.id === currentUser.id ? '1px solid var(--color-primary)' : '1px solid var(--glass-border)' }}>
-                                        <div>
-                                            <div style={{ fontWeight: '600' }}>{user.firstName} {user.lastName} {user.id === currentUser.id && <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', marginLeft: '0.5rem' }}>(You)</span>}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
-                                            <div style={{ marginTop: '0.25rem' }}>
-                                                <span className={`badge ${user.role === 'ADMIN' ? 'badge-success' : user.role === 'VIEWER' ? 'badge-neutral' : 'badge-warning'} `} style={{ fontSize: '0.65rem' }}>
-                                                    {user.role}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        {user.id !== currentUser.id && (
-                                            <button onClick={() => removeUser(user.id)} style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: '0.5rem' }}>
-                                                <Trash2 size={18} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                    </div>
-                )}
             </div>
         </div>
     );

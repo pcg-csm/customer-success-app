@@ -33,12 +33,17 @@ function App() {
     );
   }
 
-  // Temporarily bypassing login for local verification
-  /*
   if (!currentUser) {
     return <Login />;
   }
-  */
+
+  const ProtectedRoute = ({ children, requiredPermission }) => {
+    const { hasPermission } = useData();
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+      return <Dashboard />; // Redirect to safe page
+    }
+    return children;
+  };
 
   return (
     <Router>
@@ -50,7 +55,14 @@ function App() {
           <Route path="activity" element={<ActivityFeed />} />
           <Route path="activity/new" element={<CreateActivity />} />
           <Route path="presales" element={<Presales />} />
-          <Route path="users" element={<Users />} />
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute requiredPermission="MANAGE_USERS">
+                <Users />
+              </ProtectedRoute>
+            }
+          />
           <Route path="settings" element={<Settings />} />
           <Route path="training" element={<Training />} />
           <Route path="documentation" element={<Documentation />} />

@@ -184,34 +184,61 @@ export const DataProvider = ({ children }) => {
     const [presalesActivities, setPresalesActivities] = useState([]);
     const [schedulerActivities, setSchedulerActivities] = useState([]);
 
-    const [currentUser, setCurrentUser] = useState({
-        id: 'mock-id',
-        firstName: 'Admin',
-        lastName: 'User',
-        email: 'admin@pcg.com',
-        role: 'ADMIN'
-    });
-    const [isLoading, setIsLoading] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Initial auth check and data fetch
     useEffect(() => {
-        fetchData();
-        // Listen for auth changes
+        const initializeAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                await fetchUserRole(session.user.id);
+                fetchData();
+            } else {
+                setIsLoading(false);
+            }
+        };
+
+        initializeAuth();
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session?.user) {
-                // ... rest of the logic ...
+            if (session) {
+                await fetchUserRole(session.user.id);
+                if (event === 'SIGNED_IN') fetchData();
+            } else {
+                setCurrentUser(null);
+                setIsLoading(false);
             }
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
+    const fetchUserRole = async (userId) => {
+        try {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (profile) {
+                setCurrentUser({
+                    id: profile.id,
+                    firstName: profile.first_name,
+                    lastName: profile.last_name,
+                    email: profile.email,
+                    roles: Array.isArray(profile.role) ? profile.role : (profile.role ? [profile.role] : [])
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching user role:', err);
+        }
+    };
+
     const fetchData = async () => {
-        // Temporarily bypassing session check for local verification
-        /*
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        */
 
         setIsLoading(true);
         try {
@@ -242,7 +269,7 @@ export const DataProvider = ({ children }) => {
                 firstName: p.first_name,
                 lastName: p.last_name,
                 email: p.email || '', // Email might be in auth.users, but we store it in profiles for easier access if sync'd
-                role: p.role
+                roles: Array.isArray(p.role) ? p.role : (p.role ? [p.role] : [])
             })));
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -252,22 +279,32 @@ export const DataProvider = ({ children }) => {
     };
 
     const hasPermission = (permission) => {
-        if (!currentUser) return false;
-        if (currentUser.role === 'ADMIN') return true;
+        if (!currentUser || !currentUser.roles) return false;
+
+        const roles = Array.isArray(currentUser.roles) ? currentUser.roles : [currentUser.roles];
+        if (roles.includes('ADMIN')) return true;
+
+        const checkRole = (roleToMatch) => roles.includes(roleToMatch);
 
         switch (permission) {
             case 'VIEW_ALL':
                 return true;
             case 'CREATE_LEAD':
-                return currentUser.role === 'LEAD_CREATOR';
+                return checkRole('LEAD_CREATOR');
+            case 'MANAGE_SCHEDULER':
+                return checkRole('SCHEDULER');
+            case 'MANAGE_DOCUMENTATION':
+                return checkRole('DOCUMENTATION');
+            case 'MANAGE_TRAINING':
+                return checkRole('TRAINING');
             case 'EDIT_LEAD':
                 return false;
             case 'DELETE_LEAD':
                 return false;
             case 'MANAGE_CUSTOMERS':
-                return false;
+                return true; // ADMIN is already checked at the top, so we can return true here if we want ADMINs to manage customers
             case 'MANAGE_USERS':
-                return false;
+                return true; // ADMIN only for now
             default:
                 return false;
         }
@@ -590,7 +627,7 @@ export const DataProvider = ({ children }) => {
                 id: user.id || undefined, // Expecting UUID from auth if possible
                 first_name: user.firstName,
                 last_name: user.lastName,
-                role: user.role
+                role: user.roles // Store the array (PostgreSQL jsonb or text[] recommended)
             }]);
 
         if (error) {

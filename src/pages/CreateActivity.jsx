@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import { ArrowLeft, Save, MessageSquare } from 'lucide-react';
 
 const CreateActivity = () => {
-    const { customers, leads, products, employees, addActivity, isLoading } = useData();
+    const { customers, leads, products, employees, addActivity, isLoading, hasPermission, currentUser } = useData();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         type: 'customer',
@@ -58,11 +58,11 @@ const CreateActivity = () => {
                                 onChange={e => handleChange('type', e.target.value)}
                                 required
                             >
-                                <option value="customer">Customer</option>
-                                <option value="presales">Presales</option>
-                                <option value="documentation">Documentation</option>
-                                <option value="training">Training</option>
-                                <option value="scheduler">Scheduler</option>
+                                {(hasPermission('MANAGE_CUSTOMERS') || hasPermission('VIEW_ALL')) && <option value="customer">Customer</option>}
+                                {(hasPermission('CREATE_LEAD')) && <option value="presales">Presales</option>}
+                                {(hasPermission('MANAGE_DOCUMENTATION')) && <option value="documentation">Documentation</option>}
+                                {(hasPermission('MANAGE_TRAINING')) && <option value="training">Training</option>}
+                                {(hasPermission('MANAGE_SCHEDULER')) && <option value="scheduler">Scheduler</option>}
                             </select>
                         </div>
 

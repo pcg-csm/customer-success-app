@@ -22,7 +22,8 @@ const Documentation = () => {
         isLoading,
         deleteActivity,
         updateActivityContent,
-        toggleActivityStatus
+        toggleActivityStatus,
+        hasPermission
     } = useData();
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -144,8 +145,14 @@ const Documentation = () => {
                     </div>
                     <button
                         className="btn-primary"
-                        onClick={() => setIsAdding(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        onClick={() => {
+                            if (hasPermission('MANAGE_DOCUMENTATION')) {
+                                setIsAdding(true);
+                            } else {
+                                alert('You do not have permission to log documentation activities.');
+                            }
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: hasPermission('MANAGE_DOCUMENTATION') ? 1 : 0.5 }}
                     >
                         <Plus size={20} />
                         Log Activity
@@ -259,22 +266,30 @@ const Documentation = () => {
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                                     <button
                                                         onClick={() => {
-                                                            setSelectedActivity({ ...activity, id: `doc-${activity.id}`, type: 'documentation', content: activity.description });
-                                                            setIsEditModalOpen(true);
+                                                            if (hasPermission('MANAGE_DOCUMENTATION')) {
+                                                                setSelectedActivity({ ...activity, id: `doc-${activity.id}`, type: 'documentation', content: activity.description });
+                                                                setIsEditModalOpen(true);
+                                                            } else {
+                                                                alert('Permission denied.');
+                                                            }
                                                         }}
-                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                        style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', opacity: hasPermission('MANAGE_DOCUMENTATION') ? 1 : 0.3 }}
                                                         title="Edit Activity"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
                                                         onClick={async () => {
-                                                            if (window.confirm('Delete this documentation activity?')) {
-                                                                const { error } = await deleteActivity(`doc-${activity.id}`, 'documentation');
-                                                                if (error) alert('Error: ' + error.message);
+                                                            if (hasPermission('MANAGE_DOCUMENTATION')) {
+                                                                if (window.confirm('Delete this documentation activity?')) {
+                                                                    const { error } = await deleteActivity(`doc-${activity.id}`, 'documentation');
+                                                                    if (error) alert('Error: ' + error.message);
+                                                                }
+                                                            } else {
+                                                                alert('Permission denied.');
                                                             }
                                                         }}
-                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', opacity: hasPermission('MANAGE_DOCUMENTATION') ? 1 : 0.3 }}
                                                         title="Delete Activity"
                                                     >
                                                         <Trash2 size={16} />

@@ -5,13 +5,35 @@ import { User, Plus, Trash2, Mail, Shield, Key } from 'lucide-react';
 
 const Users = () => {
     const { users, addUser, removeUser, currentUser, hasPermission } = useData();
-    const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'VIEWER' });
+    const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', roles: [] });
+
+    const roleOptions = [
+        { value: 'ADMIN', label: 'Admin (Full System Access)' },
+        { value: 'VIEWER', label: 'Viewer (Read-Only Access)' },
+        { value: 'LEAD_CREATOR', label: 'Lead Creator (Discovery Creation Only)' },
+        { value: 'SCHEDULER', label: 'Scheduler (Scheduler Activities Only)' },
+        { value: 'DOCUMENTATION', label: 'Documentation (Documentation Updates Only)' },
+        { value: 'TRAINING', label: 'Training (Training Updates Only)' }
+    ];
+
+    const toggleRole = (roleValue) => {
+        setNewUser(prev => {
+            const currentRoles = prev.roles || [];
+            if (currentRoles.includes(roleValue)) {
+                return { ...prev, roles: currentRoles.filter(r => r !== roleValue) };
+            } else {
+                return { ...prev, roles: [...currentRoles, roleValue] };
+            }
+        });
+    };
 
     const handleAddUser = (e) => {
         e.preventDefault();
-        if (newUser.firstName && newUser.lastName && newUser.email && newUser.password) {
+        if (newUser.firstName && newUser.lastName && newUser.email && newUser.password && newUser.roles.length > 0) {
             addUser(newUser);
-            setNewUser({ firstName: '', lastName: '', email: '', password: '', role: 'VIEWER' });
+            setNewUser({ firstName: '', lastName: '', email: '', password: '', roles: [] });
+        } else if (newUser.roles.length === 0) {
+            alert('Please select at least one role.');
         }
     };
 
@@ -97,17 +119,36 @@ const Users = () => {
                             </div>
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>ASSIGNED ROLE</label>
-                            <select
-                                className="search-input"
-                                style={{ width: '100%' }}
-                                value={newUser.role}
-                                onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                            >
-                                <option value="ADMIN">Admin (Full System Access)</option>
-                                <option value="VIEWER">Viewer (Read-Only Access)</option>
-                                <option value="LEAD_CREATOR">Lead Creator (Discovery Creation Only)</option>
-                            </select>
+                            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>ASSIGNED ROLES (SELECT ALL THAT APPLY)</label>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '0.75rem',
+                                padding: '1rem',
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '8px'
+                            }}>
+                                {roleOptions.map(option => (
+                                    <label key={option.value} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer',
+                                        color: newUser.roles.includes(option.value) ? 'var(--color-text-main)' : 'var(--color-text-muted)',
+                                        transition: 'color 0.2s'
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={newUser.roles.includes(option.value)}
+                                            onChange={() => toggleRole(option.value)}
+                                            style={{ accentColor: 'var(--color-primary)' }}
+                                        />
+                                        {option.label.split(' (')[0]}
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                         <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem', height: '3rem', fontWeight: 'bold' }}>
                             Create User Account
@@ -150,10 +191,12 @@ const Users = () => {
                                             {user.id === currentUser.id && <span className="badge badge-success" style={{ fontSize: '0.6rem', padding: '0.1rem 0.4rem' }}>ME</span>}
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{user.email}</div>
-                                        <div style={{ marginTop: '0.4rem' }}>
-                                            <span className={`badge ${user.role === 'ADMIN' ? 'badge-success' : user.role === 'VIEWER' ? 'badge-neutral' : 'badge-warning'}`} style={{ fontSize: '0.65rem' }}>
-                                                {user.role}
-                                            </span>
+                                        <div style={{ marginTop: '0.4rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                            {(Array.isArray(user.roles) ? user.roles : [user.role]).map(role => (
+                                                <span key={role} className={`badge ${role === 'ADMIN' ? 'badge-success' : role === 'VIEWER' ? 'badge-neutral' : 'badge-warning'}`} style={{ fontSize: '0.6rem' }}>
+                                                    {role}
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

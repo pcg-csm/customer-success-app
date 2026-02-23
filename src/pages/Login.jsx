@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import logo from '../assets/pcg-logo.png';
 
 const Login = () => {
     const { login } = useData();
@@ -43,11 +44,16 @@ const Login = () => {
                 animation: 'fadeIn 0.5s ease-out'
             }}>
                 <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                    <div className="text-gradient" style={{
-                        fontSize: '2.5rem',
-                        fontWeight: 'bold',
-                        marginBottom: '0.5rem'
-                    }}>PCG</div>
+                    <img
+                        src={logo}
+                        alt="PCG Logo"
+                        style={{
+                            height: '48px',
+                            width: 'auto',
+                            objectFit: 'contain',
+                            marginBottom: '0.75rem'
+                        }}
+                    />
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                         Customer Success Platform
                     </p>

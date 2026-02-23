@@ -104,8 +104,8 @@ const Presales = () => {
     };
 
     const filteredLeads = leads.filter(lead =>
-    (lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.pocName.toLowerCase().includes(searchTerm.toLowerCase()))
+        (lead.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (lead.pocName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const filteredActivities = (presalesActivities || []).filter(a => String(a.leadId) === String(formData.id));

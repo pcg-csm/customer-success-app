@@ -28,6 +28,8 @@ const Presales = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterProbability, setFilterProbability] = useState('All');
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState(null);
 
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,14 +55,30 @@ const Presales = () => {
         setView('form');
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
-        if (formData.id) {
-            updateLead(formData);
-        } else {
-            addLead(formData);
+        setIsSaving(true);
+        setSaveError(null);
+
+        try {
+            let result;
+            if (formData.id) {
+                result = await updateLead(formData);
+            } else {
+                result = await addLead(formData);
+            }
+
+            if (result && result.success) {
+                setView('list');
+            } else {
+                setSaveError(result?.error || 'Failed to save lead. Please try again.');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            setSaveError('An unexpected error occurred while saving.');
+        } finally {
+            setIsSaving(false);
         }
-        setView('list');
     };
 
     const handleDeleteActivity = async (id) => {
@@ -247,6 +265,23 @@ ${formData.demoNotes}
                     {formData.id ? 'Edit Lead' : 'New Lead Discovery'}
                 </h1>
                 <p style={{ color: 'var(--color-text-muted)' }}>Lead capture and technical discovery form.</p>
+
+                {saveError && (
+                    <div style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '8px',
+                        color: '#ef4444',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                    }}>
+                        <AlertCircle size={20} />
+                        <span>{saveError}</span>
+                    </div>
+                )}
             </header>
 
             <div className="tabs" style={{ marginBottom: '2rem' }}>
@@ -511,8 +546,21 @@ ${formData.demoNotes}
                         <Share size={18} /> Share Lead
                     </button>
                     {((!formData.id && hasPermission('CREATE_LEAD')) || (formData.id && hasPermission('EDIT_LEAD'))) && (
-                        <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Save size={18} /> {formData.id ? 'Update Lead' : 'Save Lead'}
+                        <button
+                            type="submit"
+                            className="btn-primary"
+                            disabled={isSaving}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                opacity: isSaving ? 0.7 : 1,
+                                cursor: isSaving ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            <Save size={18} className={isSaving ? 'animate-spin' : ''} />
+                            {isSaving ? 'Saving...' : (formData.id ? 'Update Lead' : 'Save Lead')}
                         </button>
                     )}
                 </div>

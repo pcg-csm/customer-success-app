@@ -101,7 +101,7 @@ const mapLeadToDB = (l) => ({
     company_name: l.companyName,
     poc_name: l.pocName,
     poc_email: l.pocEmail,
-    annual_revenue: l.annualRevenue,
+    annual_revenue: nullifyEmpty(l.annualRevenue),
     user_count: nullifyEmpty(l.userCount),
     current_erp: l.currentErp,
     pain_points: l.painPoints,
@@ -298,7 +298,7 @@ export const DataProvider = ({ children }) => {
             case 'MANAGE_TRAINING':
                 return checkRole('TRAINING');
             case 'EDIT_LEAD':
-                return false;
+                return checkRole('LEAD_CREATOR');
             case 'DELETE_LEAD':
                 return false;
             case 'MANAGE_CUSTOMERS':
@@ -441,32 +441,29 @@ export const DataProvider = ({ children }) => {
     const addLead = async (lead) => {
         const dbLead = mapLeadToDB(lead);
         const { data, error } = await supabase.from('leads').insert([dbLead]).select();
+
         if (!error && data) {
             const newLead = mapLeadFromDB(data[0]);
-            setLeads([...leads, newLead]);
-            return newLead;
+            setLeads(prev => [...prev, newLead]);
+            return { success: true, data: newLead };
         } else {
-            console.warn('Supabase lead insert failed, using local fallback:', error);
-            const localLead = {
-                ...lead,
-                id: `local-lead-${Date.now()}`,
-                status: lead.status || 'Draft',
-                probability: lead.probability || 50
-            };
-            setLeads([...leads, localLead]);
-            return localLead;
+            console.error('Supabase lead insert failed:', error);
+            // Fallback for safety if needed, but let's report the error
+            return { success: false, error: error?.message || 'Failed to add lead' };
         }
     };
 
     const updateLead = async (updatedLead) => {
         const dbLead = mapLeadToDB(updatedLead);
         const { data, error } = await supabase.from('leads').update(dbLead).eq('id', updatedLead.id).select();
+
         if (!error && data) {
             const mapped = mapLeadFromDB(data[0]);
-            setLeads(leads.map(l => l.id === updatedLead.id ? mapped : l));
+            setLeads(prev => prev.map(l => l.id === updatedLead.id ? mapped : l));
+            return { success: true, data: mapped };
         } else {
-            console.warn('Supabase lead update failed, using local fallback:', error);
-            setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l));
+            console.error('Supabase lead update failed:', error);
+            return { success: false, error: error?.message || 'Failed to update lead' };
         }
     };
 

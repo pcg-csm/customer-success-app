@@ -4,7 +4,7 @@ import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import logo from '../assets/pcg-logo.png';
 
 const Login = () => {
-    const { login } = useData();
+    const { login, bypassLogin } = useData();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -152,10 +152,27 @@ const Login = () => {
                     </button>
                 </form>
 
-                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                <div style={{ textAlign: 'center', marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                         Default: admin@pcg.com / password
                     </p>
+                    <button
+                        onClick={async () => {
+                            await bypassLogin();
+                        }}
+                        style={{
+                            background: 'none',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                            color: '#3b82f6',
+                            fontSize: '0.7rem',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            opacity: 0.7
+                        }}
+                    >
+                        Dev: Bypass Login (Local Only)
+                    </button>
                 </div>
             </div>
 

@@ -71,7 +71,10 @@ const Presales = () => {
             if (result && result.success) {
                 setView('list');
             } else {
-                setSaveError(result?.error || 'Failed to save lead. Please try again.');
+                const errorMsg = typeof result?.error === 'object'
+                    ? JSON.stringify(result.error)
+                    : (result?.error || 'Failed to save lead.');
+                setSaveError(errorMsg);
             }
         } catch (err) {
             console.error('Save error:', err);

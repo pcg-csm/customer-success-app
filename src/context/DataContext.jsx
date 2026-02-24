@@ -431,30 +431,31 @@ export const DataProvider = ({ children }) => {
 
     const addLead = async (lead) => {
         const dbLead = mapLeadToDB(lead);
+        console.log('Inserting lead into Supabase:', dbLead);
         const { data, error } = await supabase.from('leads').insert([dbLead]).select();
 
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
             const newLead = mapLeadFromDB(data[0]);
             setLeads(prev => [...prev, newLead]);
             return { success: true, data: newLead };
         } else {
-            console.error('Supabase lead insert failed:', error);
-            // Fallback for safety if needed, but let's report the error
-            return { success: false, error: error?.message || 'Failed to add lead' };
+            console.error('Supabase lead insert failed:', error || 'No data returned');
+            return { success: false, error: error?.message || 'Failed to add lead. Check console for details.' };
         }
     };
 
     const updateLead = async (updatedLead) => {
         const dbLead = mapLeadToDB(updatedLead);
+        console.log('Updating lead in Supabase:', updatedLead.id, dbLead);
         const { data, error } = await supabase.from('leads').update(dbLead).eq('id', updatedLead.id).select();
 
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
             const mapped = mapLeadFromDB(data[0]);
             setLeads(prev => prev.map(l => l.id === updatedLead.id ? mapped : l));
             return { success: true, data: mapped };
         } else {
-            console.error('Supabase lead update failed:', error);
-            return { success: false, error: error?.message || 'Failed to update lead' };
+            console.error('Supabase lead update failed:', error || 'No data returned');
+            return { success: false, error: error?.message || 'Failed to update lead. Check console for details.' };
         }
     };
 

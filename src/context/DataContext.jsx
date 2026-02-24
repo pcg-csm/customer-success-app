@@ -6,31 +6,34 @@ const DataContext = createContext();
 const nullifyEmpty = (val) => (val === '' ? null : val);
 
 // Helper to map DB snake_case to UI camelCase
-const mapCustomerFromDB = (c) => ({
-    id: c.id,
-    company: c.company,
-    name: c.name,
-    email: c.email,
-    phone: c.phone,
-    status: c.status,
-    active: c.active,
-    arr: c.arr,
-    signedDate: c.signed_date,
-    terms: c.terms,
-    satisfaction: c.satisfaction || 7,
-    netsuite: c.netsuite || {},
-    tulip: c.tulip || {},
-    customerTeam: c.customer_team || [],
-    activityLog: c.activity_log || [],
-    licensedProducts: c.licensed_products || [],
-    attachments: c.attachments || [],
-    documents: c.documents || [],
-    personalizations: c.personalizations,
-    pcgSupportPocId: c.pcg_support_poc_id,
-    pcgImplementationLeadId: c.pcg_implementation_lead_id,
-    pcgSalesPocId: c.pcg_sales_poc_id,
-    pcgProjectPocId: c.pcg_project_poc_id
-});
+const mapCustomerFromDB = (c) => {
+    if (!c) return {};
+    return {
+        id: c.id,
+        company: c.company,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        status: c.status,
+        active: c.active,
+        arr: c.arr,
+        signedDate: c.signed_date,
+        terms: c.terms,
+        satisfaction: c.satisfaction || 7,
+        netsuite: c.netsuite || {},
+        tulip: c.tulip || {},
+        customerTeam: c.customer_team || [],
+        activityLog: c.activity_log || [],
+        licensedProducts: c.licensed_products || [],
+        attachments: c.attachments || [],
+        documents: c.documents || [],
+        personalizations: c.personalizations,
+        pcgSupportPocId: c.pcg_support_poc_id,
+        pcgImplementationLeadId: c.pcg_implementation_lead_id,
+        pcgSalesPocId: c.pcg_sales_poc_id,
+        pcgProjectPocId: c.pcg_project_poc_id
+    };
+};
 
 const mapCustomerToDB = (c) => ({
     company: c.company,
@@ -57,52 +60,63 @@ const mapCustomerToDB = (c) => ({
     pcg_project_poc_id: c.pcgProjectPocId
 });
 
-const mapLeadFromDB = (l = {}) => ({
-    id: l.id,
-    companyName: l.company_name || '',
-    pocName: l.poc_name || '',
-    pocEmail: l.poc_email || '',
-    annualRevenue: l.annual_revenue || '',
-    userCount: l.user_count || '',
-    currentErp: l.current_erp || '',
-    painPoints: l.pain_points || '',
-    budgetStatus: l.budget_status || '',
-    decisionProcess: l.decision_process || '',
-    nextStepDate: l.next_step_date || '',
-    probability: l.probability || 0,
-    status: l.status || 'New',
-    sites: l.sites || '',
-    operators: l.operators || '',
-    shifts: l.shifts || '',
-    woPerDay: l.wo_per_day || '',
-    fgItems: l.fg_items || '',
-    inventoryItems: l.inventory_items || '',
-    stagingBins: l.staging_bins || '',
-    coMan: l.co_man || '',
-    equipmentCount: l.equipment_count || '',
-    manualStations: l.manual_stations || '',
-    batchProcess: l.batch_process || '',
-    ebr: l.ebr || '',
-    continuousImprovement: l.continuous_improvement || '',
-    ciData: l.ci_data || '',
-    setupInstructions: l.setup_instructions || '',
-    setupFormat: l.setup_format || '',
-    workInstructions: l.work_instructions || '',
-    wiFormat: l.wi_format || '',
-    downtime: l.downtime || '',
-    materialLoss: l.material_loss || '',
-    laborCodes: l.labor_codes || '',
-    demoNotes: l.demo_notes || '',
-    opportunityBroughtBy: l.opportunity_brought_by || '',
-    discoveryNotes: l.discovery_notes || ''
-});
+const mapLeadFromDB = (l) => {
+    if (!l) return {};
+    return {
+        id: l.id,
+        companyName: l.company_name || '',
+        pocName: l.poc_name || '',
+        pocEmail: l.poc_email || '',
+        annualRevenue: l.annual_revenue || '',
+        userCount: l.user_count || '',
+        currentErp: l.current_erp || '',
+        painPoints: l.pain_points || '',
+        budgetStatus: l.budget_status || '',
+        decisionProcess: l.decision_process || '',
+        nextStepDate: l.next_step_date || '',
+        probability: l.probability || 0,
+        status: l.status || 'New',
+        sites: l.sites || '',
+        operators: l.operators || '',
+        shifts: l.shifts || '',
+        woPerDay: l.wo_per_day || '',
+        fgItems: l.fg_items || '',
+        inventoryItems: l.inventory_items || '',
+        stagingBins: l.staging_bins || '',
+        coMan: l.co_man || '',
+        equipmentCount: l.equipment_count || '',
+        manualStations: l.manual_stations || '',
+        batchProcess: l.batch_process || '',
+        ebr: l.ebr || '',
+        continuousImprovement: l.continuous_improvement || '',
+        ciData: l.ci_data || '',
+        setupInstructions: l.setup_instructions || '',
+        setupFormat: l.setup_format || '',
+        workInstructions: l.work_instructions || '',
+        wiFormat: l.wi_format || '',
+        downtime: l.downtime || '',
+        materialLoss: l.material_loss || '',
+        laborCodes: l.labor_codes || '',
+        demoNotes: l.demo_notes || '',
+        opportunityBroughtBy: l.opportunity_brought_by || '',
+        discoveryNotes: l.discovery_notes || ''
+    };
+};
+
+const cleanNumeric = (val) => {
+    if (val === null || val === undefined || val === '') return null;
+    if (typeof val === 'number') return val;
+    // Strip symbols, but keep decimal point and negative sign
+    const cleaned = String(val).replace(/[^0-9.-]/g, '');
+    return cleaned === '' ? null : Number(cleaned);
+};
 
 const mapLeadToDB = (l) => ({
     company_name: l.companyName,
     poc_name: l.pocName,
     poc_email: l.pocEmail,
-    annual_revenue: nullifyEmpty(l.annualRevenue),
-    user_count: nullifyEmpty(l.userCount),
+    annual_revenue: cleanNumeric(l.annualRevenue),
+    user_count: cleanNumeric(l.userCount),
     current_erp: l.currentErp,
     pain_points: l.painPoints,
     budget_status: l.budgetStatus,
@@ -110,16 +124,16 @@ const mapLeadToDB = (l) => ({
     next_step_date: nullifyEmpty(l.nextStepDate),
     probability: l.probability,
     status: l.status,
-    sites: nullifyEmpty(l.sites),
-    operators: nullifyEmpty(l.operators),
-    shifts: nullifyEmpty(l.shifts),
-    wo_per_day: nullifyEmpty(l.woPerDay),
-    fg_items: nullifyEmpty(l.fgItems),
-    inventory_items: nullifyEmpty(l.inventoryItems),
+    sites: cleanNumeric(l.sites),
+    operators: cleanNumeric(l.operators),
+    shifts: cleanNumeric(l.shifts),
+    wo_per_day: cleanNumeric(l.woPerDay),
+    fg_items: cleanNumeric(l.fgItems),
+    inventory_items: cleanNumeric(l.inventoryItems),
     staging_bins: l.stagingBins,
     co_man: l.coMan,
-    equipment_count: nullifyEmpty(l.equipmentCount),
-    manual_stations: nullifyEmpty(l.manualStations),
+    equipment_count: cleanNumeric(l.equipmentCount),
+    manual_stations: cleanNumeric(l.manualStations),
     batch_process: l.batchProcess,
     ebr: l.ebr,
     continuous_improvement: l.continuousImprovement,
@@ -136,24 +150,27 @@ const mapLeadToDB = (l) => ({
     discovery_notes: l.discoveryNotes
 });
 
-const mapEmployeeFromDB = (e) => ({
-    id: e.id,
-    firstName: e.first_name,
-    lastName: e.last_name,
-    email: e.email,
-    role: e.role,
-    location: e.location,
-    bio: e.bio,
-    title: e.title,
-    certBasicAppBuilder: e.cert_basic_app_builder,
-    certAdvancedAppBuilder: e.cert_advanced_app_builder,
-    certSolutionLead: e.cert_solution_lead,
-    certAdoptionManager: e.cert_adoption_manager,
-    certSales: e.cert_sales,
-    certGxP: e.cert_gxp,
-    certAiOps: e.cert_ai_ops,
-    certTulipCertified: e.cert_tulip_certified
-});
+const mapEmployeeFromDB = (e) => {
+    if (!e) return {};
+    return {
+        id: e.id,
+        firstName: e.first_name,
+        lastName: e.last_name,
+        email: e.email,
+        role: e.role,
+        location: e.location,
+        bio: e.bio,
+        title: e.title,
+        certBasicAppBuilder: e.cert_basic_app_builder,
+        certAdvancedAppBuilder: e.cert_advanced_app_builder,
+        certSolutionLead: e.cert_solution_lead,
+        certAdoptionManager: e.cert_adoption_manager,
+        certSales: e.cert_sales,
+        certGxP: e.cert_gxp,
+        certAiOps: e.cert_ai_ops,
+        certTulipCertified: e.cert_tulip_certified
+    };
+};
 
 const mapEmployeeToDB = (e) => ({
     first_name: e.firstName,
@@ -248,6 +265,7 @@ export const DataProvider = ({ children }) => {
                 { data: employeesData },
                 { data: leadsData },
                 { data: docActivitiesData },
+                { data: schedActivitiesData },
                 { data: profilesData }
             ] = await Promise.all([
                 supabase.from('customers').select('*').order('company'),
@@ -264,6 +282,7 @@ export const DataProvider = ({ children }) => {
             if (employeesData) setEmployees(employeesData.map(mapEmployeeFromDB));
             if (leadsData) setLeads(leadsData.map(mapLeadFromDB));
             if (docActivitiesData) setDocumentationActivities(docActivitiesData);
+            if (schedActivitiesData) setSchedulerActivities(schedActivitiesData);
             if (profilesData) setUsers(profilesData.map(p => ({
                 id: p.id,
                 firstName: p.first_name,

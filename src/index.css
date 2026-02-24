@@ -314,3 +314,12 @@ textarea.glass-panel {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

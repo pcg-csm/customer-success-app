@@ -10,15 +10,15 @@ const mapCustomerFromDB = (c) => {
     if (!c) return {};
     return {
         id: c.id,
-        company: c.company,
-        name: c.name,
-        email: c.email,
-        phone: c.phone,
-        status: c.status,
-        active: c.active,
-        arr: c.arr,
-        signedDate: c.signed_date,
-        terms: c.terms,
+        company: c.company || '',
+        name: c.name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        status: c.status || 'Onboarding',
+        active: !!c.active,
+        arr: c.arr || '',
+        signedDate: c.signed_date || '',
+        terms: c.terms || '',
         satisfaction: c.satisfaction || 7,
         netsuite: c.netsuite || {},
         tulip: c.tulip || {},
@@ -27,7 +27,7 @@ const mapCustomerFromDB = (c) => {
         licensedProducts: c.licensed_products || [],
         attachments: c.attachments || [],
         documents: c.documents || [],
-        personalizations: c.personalizations,
+        personalizations: c.personalizations || '',
         pcgSupportPocId: c.pcg_support_poc_id,
         pcgImplementationLeadId: c.pcg_implementation_lead_id,
         pcgSalesPocId: c.pcg_sales_poc_id,
@@ -154,21 +154,21 @@ const mapEmployeeFromDB = (e) => {
     if (!e) return {};
     return {
         id: e.id,
-        firstName: e.first_name,
-        lastName: e.last_name,
-        email: e.email,
-        role: e.role,
-        location: e.location,
-        bio: e.bio,
-        title: e.title,
-        certBasicAppBuilder: e.cert_basic_app_builder,
-        certAdvancedAppBuilder: e.cert_advanced_app_builder,
-        certSolutionLead: e.cert_solution_lead,
-        certAdoptionManager: e.cert_adoption_manager,
-        certSales: e.cert_sales,
-        certGxP: e.cert_gxp,
-        certAiOps: e.cert_ai_ops,
-        certTulipCertified: e.cert_tulip_certified
+        firstName: e.first_name || '',
+        lastName: e.last_name || '',
+        email: e.email || '',
+        role: e.role || '',
+        location: e.location || '',
+        bio: e.bio || '',
+        title: e.title || '',
+        certBasicAppBuilder: !!e.cert_basic_app_builder,
+        certAdvancedAppBuilder: !!e.cert_advanced_app_builder,
+        certSolutionLead: !!e.cert_solution_lead,
+        certAdoptionManager: !!e.cert_adoption_manager,
+        certSales: !!e.cert_sales,
+        certGxP: !!e.cert_gxp,
+        certAiOps: !!e.cert_ai_ops,
+        certTulipCertified: !!e.cert_tulip_certified
     };
 };
 
@@ -871,9 +871,9 @@ export const DataProvider = ({ children }) => {
                     id: `cust-${log.id}`,
                     timestamp: ensure8AM(log.timestamp),
                     type: 'customer',
-                    title: customer.company,
-                    content: log.content,
-                    subTitle: log.customerName,
+                    title: customer.company || 'Unknown Customer',
+                    content: log.content || '',
+                    subTitle: log.customerName || 'Customer Staff',
                     customerId: customer.id
                 });
             });
@@ -886,8 +886,8 @@ export const DataProvider = ({ children }) => {
                 id: `doc-${doc.id}`,
                 type: 'documentation',
                 timestamp: ensure8AM(doc.activity_date),
-                title: doc.product_type,
-                content: doc.description,
+                title: doc.product_type || 'Unknown Product',
+                content: doc.description || '',
                 subTitle: member ? `${member.firstName} ${member.lastName}` : 'Unknown Member'
             });
         });
@@ -899,8 +899,8 @@ export const DataProvider = ({ children }) => {
                 type: 'training',
                 timestamp: ensure8AM(train.timestamp),
                 title: 'Training Session',
-                content: train.content,
-                subTitle: train.employeeName
+                content: train.content || '',
+                subTitle: train.employeeName || 'Staff Member'
             });
         });
 
@@ -910,8 +910,8 @@ export const DataProvider = ({ children }) => {
                 id: `pre-${pre.id}`,
                 type: 'presales',
                 timestamp: ensure8AM(pre.timestamp),
-                title: pre.leadName,
-                content: pre.content,
+                title: pre.leadName || 'Unknown Lead',
+                content: pre.content || '',
                 subTitle: 'Presales Discovery'
             });
         });
@@ -923,7 +923,7 @@ export const DataProvider = ({ children }) => {
                 type: 'scheduler',
                 timestamp: ensure8AM(sched.timestamp),
                 title: 'Scheduled Item',
-                content: sched.content,
+                content: sched.content || '',
                 subTitle: 'Scheduler'
             });
         });

@@ -73,6 +73,8 @@ const CustomerDetail = () => {
     // Edit Mode State
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState(null);
 
     // Initialize formData when customer loads or edit mode starts
     React.useEffect(() => {
@@ -82,9 +84,22 @@ const CustomerDetail = () => {
         }
     }, [customer]);
 
-    const handleSave = () => {
-        updateCustomer(formData);
-        setIsEditing(false);
+    const handleSave = async () => {
+        setIsSaving(true);
+        setSaveError(null);
+        try {
+            const result = await updateCustomer(formData);
+            if (result && result.success) {
+                setIsEditing(false);
+            } else {
+                setSaveError(result?.error || 'Failed to save changes.');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            setSaveError('An unexpected error occurred.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleCancel = () => {
@@ -793,6 +808,56 @@ const CustomerDetail = () => {
                                 <p style={{ color: 'var(--color-text-muted)' }}>Total Interaction Logs</p>
                             </Card>
                         </div>
+                    </div>
+                )}
+                {isEditing && (
+                    <div style={{
+                        position: 'sticky',
+                        top: '1rem',
+                        zIndex: 10,
+                        marginBottom: '1.5rem',
+                        padding: '1rem',
+                        background: '#1e293b',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ fontWeight: 'bold' }}>Editing {customer?.name}</h3>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>You have unsaved changes</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <button onClick={handleCancel} className="glass-panel" style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                                <button
+                                    onClick={handleSave}
+                                    className="btn-primary"
+                                    style={{ padding: '0.5rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    disabled={isSaving}
+                                >
+                                    <Save size={16} className={isSaving ? 'animate-spin' : ''} />
+                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div>
+                        {saveError && (
+                            <div style={{
+                                padding: '0.75rem',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '4px',
+                                color: '#fb7185',
+                                fontSize: '0.875rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}>
+                                <XCircle size={16} />
+                                {saveError}
+                            </div>
+                        )}
                     </div>
                 )}
                 {activeTab === 'personalizations' && (

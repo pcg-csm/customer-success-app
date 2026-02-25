@@ -36,24 +36,24 @@ const mapCustomerFromDB = (c) => {
 };
 
 const mapCustomerToDB = (c) => ({
-    company: c.company,
-    name: c.name,
-    email: c.email,
-    phone: c.phone,
-    status: c.status,
-    active: c.active,
-    arr: c.arr,
-    signed_date: c.signedDate,
-    terms: c.terms,
-    satisfaction: c.satisfaction,
-    netsuite: c.netsuite,
-    tulip: c.tulip,
-    customer_team: c.customerTeam,
-    activity_log: c.activityLog,
-    licensed_products: c.licensedProducts,
-    attachments: c.attachments,
-    documents: c.documents,
-    personalizations: c.personalizations,
+    company: c.company || '',
+    name: c.name || '',
+    email: c.email || '',
+    phone: c.phone || '',
+    status: c.status || 'Onboarding',
+    active: !!c.active,
+    arr: cleanNumeric(c.arr),
+    signed_date: nullifyEmpty(c.signedDate),
+    terms: cleanNumeric(c.terms),
+    satisfaction: cleanNumeric(c.satisfaction),
+    netsuite: c.netsuite || {},
+    tulip: c.tulip || {},
+    customer_team: c.customerTeam || [],
+    activity_log: c.activityLog || [],
+    licensed_products: c.licensedProducts || [],
+    attachments: c.attachments || [],
+    documents: c.documents || [],
+    personalizations: c.personalizations || '',
     pcg_support_poc_id: c.pcgSupportPocId,
     pcg_implementation_lead_id: c.pcgImplementationLeadId,
     pcg_sales_poc_id: c.pcgSalesPocId,
@@ -473,13 +473,21 @@ export const DataProvider = ({ children }) => {
 
     const updateCustomer = async (updatedCustomer) => {
         const dbCustomer = mapCustomerToDB(updatedCustomer);
+        console.log('Updating customer in Supabase:', updatedCustomer.id, dbCustomer);
         const { data, error } = await supabase.from('customers').update(dbCustomer).eq('id', updatedCustomer.id).select();
-        if (!error && data) {
+
+        if (!error && data && data.length > 0) {
             const mapped = mapCustomerFromDB(data[0]);
-            setCustomers(customers.map(c => c.id === updatedCustomer.id ? mapped : c));
+            setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? mapped : c));
+            return { success: true, data: mapped };
         } else {
-            console.warn('Supabase customer update failed, using local fallback:', error);
-            setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+            console.error('Supabase customer update failed:', error || 'No data returned');
+            // Local fallback for UI stability
+            setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+            return {
+                success: false,
+                error: error?.message || 'Failed to update customer. Check console for details.'
+            };
         }
     };
 

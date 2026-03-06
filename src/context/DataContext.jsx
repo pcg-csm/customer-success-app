@@ -91,7 +91,7 @@ const mapLeadFromDB = (l) => {
         continuousImprovement: l.continuous_improvement || '',
         ciData: l.ci_data || '',
         setupInstructions: l.setup_instructions || '',
-        setupFormat: l.setup_format || '',
+        productLine: l.setup_format ? l.setup_format.split(',') : [],
         workInstructions: l.work_instructions || '',
         wiFormat: l.wi_format || '',
         downtime: l.downtime || '',
@@ -102,10 +102,12 @@ const mapLeadFromDB = (l) => {
 
 const cleanNumeric = (val) => {
     if (val === null || val === undefined || val === '') return null;
-    if (typeof val === 'number') return val;
+    if (typeof val === 'number') return isNaN(val) ? null : val;
     // Strip symbols, but keep decimal point and negative sign
     const cleaned = String(val).replace(/[^0-9.-]/g, '');
-    return cleaned === '' ? null : Number(cleaned);
+    if (cleaned === '') return null;
+    const num = Number(cleaned);
+    return isNaN(num) ? null : num;
 };
 
 const mapLeadToDB = (l) => ({
@@ -136,14 +138,14 @@ const mapLeadToDB = (l) => ({
     continuous_improvement: l.continuousImprovement,
     ci_data: l.ciData,
     setup_instructions: l.setupInstructions,
-    setup_format: l.setupFormat,
+    setup_format: Array.isArray(l.productLine) ? l.productLine.join(',') : '',
     work_instructions: l.workInstructions,
     wi_format: l.wiFormat,
     downtime: l.downtime,
     material_loss: l.materialLoss,
     labor_codes: l.laborCodes,
     // Pruned confirmed missing columns:
-    // attachments, discovery_notes, opportunity_brought_by, demo_notes
+    // attachments, discovery_notes, opportunity_brought_by, demo_notes, user_id, created_by
 });
 
 const mapEmployeeFromDB = (e) => {
@@ -265,9 +267,9 @@ export const DataProvider = ({ children }) => {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (isBypass = false) => {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+        if (!session && !isBypass && currentUser?.id !== 'mock-admin-id') return;
 
         setIsLoading(true);
         try {
@@ -278,6 +280,7 @@ export const DataProvider = ({ children }) => {
                 { data: leadsData },
                 { data: docActivitiesData },
                 { data: schedActivitiesData },
+                { data: presalesActivitiesData },
                 { data: profilesData }
             ] = await Promise.all([
                 supabase.from('customers').select('*').order('company'),
@@ -286,6 +289,7 @@ export const DataProvider = ({ children }) => {
                 supabase.from('leads').select('*').order('created_at', { ascending: false }),
                 supabase.from('documentation_activities').select('*').order('created_at', { ascending: false }),
                 supabase.from('scheduler_activities').select('*').order('created_at', { ascending: false }),
+                supabase.from('presales_activities').select('*').order('created_at', { ascending: false }),
                 supabase.from('profiles').select('*').order('first_name')
             ]);
 
@@ -295,6 +299,7 @@ export const DataProvider = ({ children }) => {
             if (leadsData) setLeads(leadsData.map(mapLeadFromDB));
             if (docActivitiesData) setDocumentationActivities(docActivitiesData);
             if (schedActivitiesData) setSchedulerActivities(schedActivitiesData);
+            if (presalesActivitiesData) setPresalesActivities(presalesActivitiesData);
             if (profilesData) setUsers(profilesData.map(p => ({
                 id: p.id,
                 firstName: p.first_name,
@@ -348,6 +353,12 @@ export const DataProvider = ({ children }) => {
         });
 
         if (error) {
+            // Local fallback for hardcoded credentials
+            if (email === 'admin@pcg.com' && password === 'password') {
+                console.log('Local: Bypass login triggered via credentials');
+                await bypassLogin();
+                return { success: true };
+            }
             console.error('Login error:', error.message);
             return { success: false, error: error.message };
         }
@@ -365,8 +376,8 @@ export const DataProvider = ({ children }) => {
             roles: ['ADMIN']
         });
         setIsLoading(false);
-        // Attempt to fetch data anyway, but it might fail without session which is fine for local test
-        fetchData();
+        // Pass true to indicate this is a bypass call
+        fetchData(true);
     };
 
     const logout = async () => {
@@ -384,12 +395,18 @@ export const DataProvider = ({ children }) => {
     };
 
     const addProduct = async (productName) => {
+        if (currentUser?.id === 'mock-admin-id') {
+            setProducts([...products, productName]);
+            return { success: true };
+        }
         const { data, error } = await supabase.from('products').insert([{ name: productName }]).select();
         if (!error && data) {
             setProducts([...products, productName]);
+            return { success: true };
         } else {
-            console.warn('Supabase product insert failed, using local fallback:', error);
-            setProducts([...products, productName]);
+            console.error('Supabase product insert failed:', error);
+            // We don't use local fallback here to ensure user knows it didn't persist
+            return { success: false, error: error?.message || 'Failed to save product to database.' };
         }
     };
 
@@ -407,14 +424,12 @@ export const DataProvider = ({ children }) => {
         const dbEmployee = mapEmployeeToDB(employee);
         const { data, error } = await supabase.from('employees').insert([dbEmployee]).select();
         if (!error && data) {
-            setEmployees([...employees, mapEmployeeFromDB(data[0])]);
+            const mapped = mapEmployeeFromDB(data[0]);
+            setEmployees([...employees, mapped]);
+            return { data: mapped, error: null };
         } else {
-            console.warn('Supabase employee insert failed, using local fallback:', error);
-            const localEmployee = {
-                ...employee,
-                id: `local-emp-${Date.now()}`
-            };
-            setEmployees([...employees, localEmployee]);
+            console.error('Supabase employee insert failed:', error);
+            return { data: null, error: error?.message || 'Failed to add employee.' };
         }
     };
 
@@ -492,6 +507,16 @@ export const DataProvider = ({ children }) => {
     };
 
     const addLead = async (lead) => {
+        if (currentUser?.id === 'mock-admin-id') {
+            console.log('Dev: Mocking lead insert (Bypass Mode)');
+            const mockLead = {
+                ...lead,
+                id: `mock-${Date.now()}`,
+                created_at: new Date().toISOString()
+            };
+            setLeads(prev => [mockLead, ...prev]);
+            return { success: true, data: mockLead };
+        }
         const dbLead = mapLeadToDB(lead);
         console.log('Inserting lead into Supabase:', dbLead);
         const { data, error } = await supabase.from('leads').insert([dbLead]).select();
@@ -502,11 +527,16 @@ export const DataProvider = ({ children }) => {
             return { success: true, data: newLead };
         } else {
             console.error('Supabase lead insert failed:', error || 'No data returned');
-            return { success: false, error: error?.message || 'Failed to add lead. Check console for details.' };
+            return { success: false, error: error?.message || 'Failed to add lead. Check console.' };
         }
     };
 
     const updateLead = async (updatedLead) => {
+        if (currentUser?.id === 'mock-admin-id') {
+            console.log('Dev: Mocking lead update (Bypass Mode)');
+            setLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+            return { success: true, data: updatedLead };
+        }
         const dbLead = mapLeadToDB(updatedLead);
         console.log('Updating lead in Supabase:', updatedLead.id, dbLead);
         const { data, error } = await supabase.from('leads').update(dbLead).eq('id', updatedLead.id).select();
@@ -517,7 +547,7 @@ export const DataProvider = ({ children }) => {
             return { success: true, data: mapped };
         } else {
             console.error('Supabase lead update failed:', error || 'No data returned');
-            return { success: false, error: error?.message || 'Failed to update lead. Check console for details.' };
+            return { success: false, error: error?.message || 'Failed to update lead. Check console.' };
         }
     };
 

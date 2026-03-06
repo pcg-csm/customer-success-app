@@ -17,11 +17,17 @@ const INITIAL_FORM_STATE = {
     demoNotes: '',
     opportunityBroughtBy: '',
     discoveryNotes: '',
+    productLine: [],
     attachments: []
 };
 
 const Presales = () => {
-    const { leads, presalesActivities, addLead, updateLead, removeLead, hasPermission, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
+    const { leads, presalesActivities, addLead, updateLead, removeLead, hasPermission, deleteActivity, updateActivityContent, toggleActivityStatus, currentUser } = useData();
+    console.log('Presales Render - currentUser:', currentUser);
+    console.log('Permissions:', {
+        CREATE_LEAD: hasPermission('CREATE_LEAD'),
+        EDIT_LEAD: hasPermission('EDIT_LEAD')
+    });
     const [view, setView] = useState('list'); // 'list' or 'form'
     const [activeTab, setActiveTab] = useState('lead');
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
@@ -57,30 +63,37 @@ const Presales = () => {
 
     const handleSave = async (e) => {
         e.preventDefault();
+        console.log('Lead handleSave triggered. formData:', formData);
         setIsSaving(true);
         setSaveError(null);
 
         try {
             let result;
             if (formData.id) {
+                console.log('Dispatching updateLead...');
                 result = await updateLead(formData);
             } else {
+                console.log('Dispatching addLead...');
                 result = await addLead(formData);
             }
 
+            console.log('Save operation completed. Result:', result);
             if (result && result.success) {
+                console.log('Success detected, transitioning view');
                 setView('list');
             } else {
-                const errorMsg = typeof result?.error === 'object'
-                    ? JSON.stringify(result.error)
-                    : (result?.error || 'Failed to save lead.');
+                console.error('Save operation returned failure:', result);
+                const errorMsg = result?.error
+                    ? (typeof result.error === 'object' ? JSON.stringify(result.error) : result.error)
+                    : 'Failed to save lead. An unknown database error occurred.';
                 setSaveError(errorMsg);
             }
         } catch (err) {
-            console.error('Save error:', err);
-            setSaveError('An unexpected error occurred while saving.');
+            console.error('CRITICAL: Unexpected exception during save:', err);
+            setSaveError('An unexpected system error occurred: ' + err.message);
         } finally {
             setIsSaving(false);
+            console.log('isSaving reset to false');
         }
     };
 
@@ -103,7 +116,10 @@ const Presales = () => {
 
     const handleToggleDone = async (id, type, currentStatus) => {
         const { error } = await toggleActivityStatus(id, type, currentStatus);
-        if (error) alert('Error updating status: ' + error.message);
+        if (error) {
+            console.error('Toggle status error:', error);
+            alert('Error updating status: ' + (error.message || 'Unknown error'));
+        }
     };
 
     const filteredLeads = leads.filter(lead =>
@@ -336,6 +352,38 @@ ${formData.demoNotes}
                             <div className="form-group">
                                 <label>Current ERP</label>
                                 <input className="search-input w-full" value={formData.currentErp} onChange={e => handleChange('currentErp', e.target.value)} />
+                            </div>
+
+                            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                                <label><strong>Product Line</strong> (Select all that apply)</label>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                    gap: '1rem',
+                                    marginTop: '0.75rem',
+                                    padding: '1rem',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    {['NetSuite', 'CSI', 'Infor LN', 'Scheduler'].map(item => (
+                                        <label key={item} className="checkbox-label" style={{ marginBottom: 0 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.productLine?.includes(item)}
+                                                onChange={(e) => {
+                                                    const current = formData.productLine || [];
+                                                    const next = e.target.checked
+                                                        ? [...current, item]
+                                                        : current.filter(i => i !== item);
+                                                    handleChange('productLine', next);
+                                                }}
+                                                style={{ width: '16px', height: '16px', marginRight: '0.5rem' }}
+                                            />
+                                            {item}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </Card>
 

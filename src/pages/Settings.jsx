@@ -22,17 +22,32 @@ const Settings = () => {
     const [showPasswords, setShowPasswords] = useState(false);
     const [passwordStatus, setPasswordStatus] = useState({ loading: false, message: '', type: '' });
 
-    const handleAddProduct = () => {
+    const [saveStatus, setSaveStatus] = useState({ loading: false, message: '', type: '' });
+    const handleAddProduct = async () => {
         if (newProduct.trim()) {
-            addProduct(newProduct.trim());
-            setNewProduct('');
+            setSaveStatus({ loading: true, message: '', type: '' });
+            const result = await addProduct(newProduct.trim());
+            if (result && result.success) {
+                setSaveStatus({ loading: false, message: 'Product added successfully!', type: 'success' });
+                setNewProduct('');
+                setTimeout(() => setSaveStatus({ loading: false, message: '', type: '' }), 3000);
+            } else {
+                setSaveStatus({ loading: false, message: result?.error || 'Failed to add product.', type: 'error' });
+            }
         }
     };
 
-    const handleAddEmployee = () => {
+    const handleAddEmployee = async () => {
         if (newEmployee.firstName && newEmployee.lastName) {
-            addEmployee(newEmployee);
-            setNewEmployee({ firstName: '', lastName: '', email: '', title: '', role: 'Support' });
+            setSaveStatus({ loading: true, message: '', type: '' });
+            const result = await addEmployee(newEmployee);
+            if (result && !result.error) {
+                setSaveStatus({ loading: false, message: 'Employee added successfully!', type: 'success' });
+                setNewEmployee({ firstName: '', lastName: '', email: '', title: '', role: 'Support' });
+                setTimeout(() => setSaveStatus({ loading: false, message: '', type: '' }), 3000);
+            } else {
+                setSaveStatus({ loading: false, message: result?.error || 'Failed to add employee.', type: 'error' });
+            }
         }
     };
 
@@ -107,10 +122,30 @@ const Settings = () => {
                                     onChange={(e) => setNewProduct(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddProduct()}
                                 />
-                                <button className="btn-primary" onClick={handleAddProduct} style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Plus size={20} /> <span>Save Product</span>
+                                <button
+                                    className="btn-primary"
+                                    onClick={handleAddProduct}
+                                    disabled={saveStatus.loading}
+                                    style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: saveStatus.loading ? 0.7 : 1 }}
+                                >
+                                    <Plus size={20} className={saveStatus.loading ? 'animate-spin' : ''} />
+                                    <span>{saveStatus.loading ? 'Saving...' : 'Save Product'}</span>
                                 </button>
                             </div>
+
+                            {saveStatus.message && (
+                                <div style={{
+                                    marginBottom: '1.5rem',
+                                    padding: '0.75rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.85rem',
+                                    background: saveStatus.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                    color: saveStatus.type === 'success' ? '#4ade80' : '#f87171',
+                                    border: saveStatus.type === 'success' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                                }}>
+                                    {saveStatus.message}
+                                </div>
+                            )}
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {products.map((product, idx) => (

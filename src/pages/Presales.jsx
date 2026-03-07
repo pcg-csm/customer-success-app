@@ -8,7 +8,7 @@ const INITIAL_FORM_STATE = {
     // Lead Info
     companyName: '', pocName: '', pocEmail: '', annualRevenue: '', userCount: '', currentErp: '',
     painPoints: '',
-    status: 'New',
+    status: 'Active',
 
     // Operations
     sites: '', operators: '', shifts: '', woPerDay: '', fgItems: '', inventoryItems: '',
@@ -32,7 +32,8 @@ const Presales = () => {
     const [activeTab, setActiveTab] = useState('lead');
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterProbability, setFilterProbability] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [sortConfig, setSortConfig] = useState({ key: 'companyName', direction: 'asc' });
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState(null);
@@ -122,10 +123,42 @@ const Presales = () => {
         }
     };
 
-    const filteredLeads = leads.filter(lead =>
-        (lead.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (lead.pocName || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredLeads = useMemo(() => {
+        let result = leads.filter(lead => {
+            const matchesSearch = (lead.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (lead.pocName || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+
+        if (sortConfig.key) {
+            result.sort((a, b) => {
+                let aVal = a[sortConfig.key] || '';
+                let bVal = b[sortConfig.key] || '';
+                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return result;
+    }, [leads, searchTerm, statusFilter, sortConfig]);
+
+    const handleSort = (key) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const getStatusBadgeStyle = (status) => {
+        switch (status) {
+            case 'Closed (Won)': return { background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)' };
+            case 'Closed (Lost)': return { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' };
+            default: return { background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' };
+        }
+    };
 
     const filteredActivities = (presalesActivities || []).filter(a => String(a.leadId) === String(formData.id));
 
@@ -186,18 +219,30 @@ ${formData.demoNotes}
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ position: 'relative' }}>
-                            <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                            <input
-                                type="text"
-                                placeholder="Search leads..."
-                                className="search-input"
-                                style={{ paddingLeft: '2.5rem' }}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <Filter size={18} style={{ color: 'var(--color-text-muted)' }} />
+                        <select
+                            className="search-input"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            style={{ minWidth: '150px' }}
+                        >
+                            <option value="All">All Statuses</option>
+                            <option value="Active">Active</option>
+                            <option value="Closed (Won)">Closed (Won)</option>
+                            <option value="Closed (Lost)">Closed (Lost)</option>
+                        </select>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search leads..."
+                            className="search-input"
+                            style={{ paddingLeft: '2.5rem' }}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </header>
 
@@ -205,9 +250,15 @@ ${formData.demoNotes}
                     <table className="w-full">
                         <thead>
                             <tr style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)' }}>
-                                <th style={{ padding: '1rem' }}>Company</th>
-                                <th style={{ padding: '1rem' }}>POC</th>
-                                <th style={{ padding: '1rem' }}>Revenue</th>
+                                <th onClick={() => handleSort('companyName')} style={{ padding: '1rem', cursor: 'pointer' }}>
+                                    Company {sortConfig.key === 'companyName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('pocName')} style={{ padding: '1rem', cursor: 'pointer' }}>
+                                    POC {sortConfig.key === 'pocName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
+                                <th onClick={() => handleSort('status')} style={{ padding: '1rem', cursor: 'pointer' }}>
+                                    Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
                                 <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
@@ -219,7 +270,17 @@ ${formData.demoNotes}
                                         <div style={{ fontSize: '0.9rem' }}>{lead.pocName}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{lead.pocEmail}</div>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>{lead.annualRevenue}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <span style={{
+                                            ...getStatusBadgeStyle(lead.status),
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '4px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: '600'
+                                        }}>
+                                            {lead.status}
+                                        </span>
+                                    </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                                             <button
@@ -334,6 +395,18 @@ ${formData.demoNotes}
                                     <label>POC Email</label>
                                     <input className="search-input w-full" value={formData.pocEmail} onChange={e => handleChange('pocEmail', e.target.value)} />
                                 </div>
+                            </div>
+                            <div className="form-group">
+                                <label>Status</label>
+                                <select
+                                    className="search-input w-full"
+                                    value={formData.status}
+                                    onChange={e => handleChange('status', e.target.value)}
+                                >
+                                    <option value="Active">Active</option>
+                                    <option value="Closed (Won)">Closed (Won)</option>
+                                    <option value="Closed (Lost)">Closed (Lost)</option>
+                                </select>
                             </div>
                             <div className="form-group">
                                 <label>Opportunity brought to PCG by:</label>

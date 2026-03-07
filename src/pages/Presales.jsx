@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Card from '../components/Card';
 import { useData } from '../context/DataContext';
 import { FileText, Factory, Wifi, Server, ClipboardCheck, Save, Share, Plus, Edit2, Trash2, ArrowLeft, Search, Filter, Upload, MessageSquare, Calendar, XCircle, AlertCircle } from 'lucide-react';

@@ -28,11 +28,16 @@ const Users = () => {
         });
     };
 
-    const handleAddUser = (e) => {
+    const handleAddUser = async (e) => {
         e.preventDefault();
         if (newUser.firstName && newUser.lastName && newUser.email && newUser.password && newUser.roles.length > 0) {
-            addUser(newUser);
-            setNewUser({ firstName: '', lastName: '', email: '', password: '', roles: [] });
+            const result = await addUser(newUser);
+            if (result && result.success) {
+                alert('User account created successfully! If email confirmation is enabled, they will need to check their inbox.');
+                setNewUser({ firstName: '', lastName: '', email: '', password: '', roles: [] });
+            } else {
+                alert('Failed to create user: ' + (result?.error || 'Unknown error'));
+            }
         } else if (newUser.roles.length === 0) {
             alert('Please select at least one role.');
         }
@@ -70,7 +75,7 @@ const Users = () => {
             }}>
                 <AlertCircle size={20} style={{ color: '#3b82f6', flexShrink: 0 }} />
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-main)', lineHeight: '1.5' }}>
-                    <strong>Administrative Note:</strong> Defining a user here only creates their application profile and roles. To enable login for a new team member, you must first create their account in the <strong>Supabase Auth Dashboard</strong> using the same email address.
+                    <strong>Administrative Note:</strong> Defining a user here now attempts to create their <strong>Supabase Auth</strong> account automatically. If your Supabase project has **Email Confirmation** enabled, the user must confirm their email before they can sign in.
                 </p>
             </div>
 

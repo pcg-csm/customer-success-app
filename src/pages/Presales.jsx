@@ -33,6 +33,7 @@ const Presales = () => {
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [productLineFilter, setProductLineFilter] = useState('All');
     const [sortConfig, setSortConfig] = useState({ key: 'companyName', direction: 'asc' });
     const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -123,12 +124,17 @@ const Presales = () => {
         }
     };
 
+    const productLines = ['NetSuite', 'CSI', 'Infor LN', 'Scheduler']; // Define product lines for filter
+
     const filteredLeads = useMemo(() => {
         let result = leads.filter(lead => {
             const matchesSearch = (lead.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (lead.pocName || '').toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'All' || lead.status === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesProductLine = productLineFilter === 'All' ||
+                (lead.productLine && Array.isArray(lead.productLine) && lead.productLine.includes(productLineFilter));
+
+            return matchesSearch && matchesStatus && matchesProductLine;
         });
 
         if (sortConfig.key) {
@@ -143,7 +149,7 @@ const Presales = () => {
             });
         }
         return result;
-    }, [leads, searchTerm, statusFilter, sortConfig]);
+    }, [leads, searchTerm, statusFilter, productLineFilter, sortConfig]);
 
     const handleSort = (key) => {
         setSortConfig(prev => ({
@@ -221,17 +227,35 @@ ${formData.demoNotes}
 
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <Filter size={18} style={{ color: 'var(--color-text-muted)' }} />
-                        <select
-                            className="search-input"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            style={{ minWidth: '150px' }}
-                        >
-                            <option value="All">All Statuses</option>
-                            <option value="Active">Active</option>
-                            <option value="Closed (Won)">Closed (Won)</option>
-                            <option value="Closed (Lost)">Closed (Lost)</option>
-                        </select>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>PRODUCT LINE</label>
+                            <select
+                                className="search-input"
+                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', minWidth: '140px' }}
+                                value={productLineFilter}
+                                onChange={(e) => setProductLineFilter(e.target.value)}
+                            >
+                                <option value="All">All Products</option>
+                                {productLines.map(pl => (
+                                    <option key={pl} value={pl}>{pl}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: '600' }}>STATUS</label>
+                            <select
+                                className="search-input"
+                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', minWidth: '130px' }}
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="All">All Statuses</option>
+                                <option value="Active">Active</option>
+                                <option value="Closed (Won)">Closed (Won)</option>
+                                <option value="Closed (Lost)">Closed (Lost)</option>
+                            </select>
+                        </div>
                     </div>
                     <div style={{ position: 'relative' }}>
                         <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
@@ -256,6 +280,9 @@ ${formData.demoNotes}
                                 <th onClick={() => handleSort('pocName')} style={{ padding: '1rem', cursor: 'pointer' }}>
                                     POC {sortConfig.key === 'pocName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
+                                <th onClick={() => handleSort('productLine')} style={{ padding: '1rem', cursor: 'pointer' }}>
+                                    Product Line {sortConfig.key === 'productLine' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </th>
                                 <th onClick={() => handleSort('status')} style={{ padding: '1rem', cursor: 'pointer' }}>
                                     Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </th>
@@ -269,6 +296,22 @@ ${formData.demoNotes}
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ fontSize: '0.9rem' }}>{lead.pocName}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{lead.pocEmail}</div>
+                                    </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                            {(lead.productLine || []).map((pl, idx) => (
+                                                <span key={idx} style={{
+                                                    background: 'rgba(59, 130, 246, 0.1)',
+                                                    color: '#3b82f6',
+                                                    padding: '0.2rem 0.6rem',
+                                                    borderRadius: '9999px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    {pl}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{

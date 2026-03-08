@@ -91,7 +91,7 @@ const mapLeadFromDB = (l) => {
         continuousImprovement: l.continuous_improvement || '',
         ciData: l.ci_data || '',
         setupInstructions: l.setup_instructions || '',
-        productLine: l.setup_format ? l.setup_format.split(',') : [],
+        productLine: l.setup_format ? l.setup_format.split(',').filter(Boolean) : [],
         workInstructions: l.work_instructions || '',
         wiFormat: l.wi_format || '',
         downtime: l.downtime || '',
@@ -709,27 +709,50 @@ export const DataProvider = ({ children }) => {
     };
 
     const addUser = async (user) => {
-        // Note: New users should ideally be invited via Supabase Auth Dashboard
-        // This just creates the profile record
-        const { error } = await supabase
+        console.log('Attempting to create user auth account:', user.email);
+
+        // 1. Create the Auth account
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: user.email,
+            password: user.password,
+            options: {
+                data: {
+                    first_name: user.firstName,
+                    last_name: user.lastName,
+                }
+            }
+        });
+
+        if (authError) {
+            console.error('Supabase Auth signUp failed:', authError.message);
+            return { success: false, error: authError.message };
+        }
+
+        const authUser = authData.user;
+        if (!authUser) {
+            return { success: false, error: 'Auth user creation failed unexpectedly.' };
+        }
+
+        // 2. Create the profile record using the Auth UUID
+        const { error: profileError } = await supabase
             .from('profiles')
             .insert([{
-                id: user.id || undefined, // Expecting UUID from auth if possible
+                id: authUser.id,
                 first_name: user.firstName,
                 last_name: user.lastName,
-                role: user.roles // Store the array (PostgreSQL jsonb or text[] recommended)
+                role: user.roles
             }]);
 
-        if (error) {
-            console.warn('Supabase profile insert failed, using local fallback:', error);
-            const localUser = {
-                ...user,
-                id: user.id || `local-user-${Date.now()}`
-            };
-            setUsers([...users, localUser]);
-        } else {
-            fetchData();
+        if (profileError) {
+            console.error('Supabase profile insert failed:', profileError.message);
+            // Even if profile fails, the auth account exists now. 
+            // In a real app we might want to rollback, but here we'll just report it.
+            return { success: false, error: 'Auth account created, but profile mapping failed: ' + profileError.message };
         }
+
+        console.log('User created successfully:', authUser.id);
+        fetchData();
+        return { success: true };
     };
 
     const removeUser = async (userId) => {

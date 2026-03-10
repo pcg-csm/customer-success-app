@@ -322,9 +322,9 @@ const CustomerList = () => {
                     <tbody>
                         {sortedCustomers.map((customer) => (
                             <tr key={customer.id}>
-                                <td style={{ color: 'var(--color-text-muted)' }}>{customer.company}</td>
+                                <td style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--color-text-main)' }}>{customer.company}</td>
                                 <td>
-                                    <div style={{ fontWeight: '500' }}>{customer.name}</div>
+                                    <div style={{ fontWeight: '400', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{customer.name}</div>
                                 </td>
                                 <td>
                                     <span className={`badge ${getStatusBadge(customer.status)}`}>

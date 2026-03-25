@@ -59,7 +59,7 @@ const SatisfactionGauge = ({ score }) => {
 const CustomerDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { customers, updateCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
+    const { customers, updateCustomer, removeCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
     const customer = customers.find(c => String(c.id) === String(id));
     const [activeTab, setActiveTab] = useState('overview');
     const [activities, setActivities] = useState(customer?.activityLog || []);
@@ -105,6 +105,17 @@ const CustomerDetail = () => {
     const handleCancel = () => {
         setFormData(customer);
         setIsEditing(false);
+    };
+
+    const handleDeleteCustomer = async () => {
+        if (window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+            const result = await removeCustomer(customer.id);
+            if (result && result.success) {
+                navigate('/customers');
+            } else {
+                alert('Failed to delete customer: ' + (result?.error || 'Unknown error'));
+            }
+        }
     };
 
     const handleToggleDone = async (id, type, currentStatus) => {
@@ -301,7 +312,17 @@ const CustomerDetail = () => {
                         <>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
                                 {hasPermission('MANAGE_CUSTOMERS') && (
-                                    <button className="glass-panel" onClick={() => setIsEditing(true)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem' }}>Edit Customer</button>
+                                    <>
+                                        <button className="glass-panel" onClick={() => setIsEditing(true)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.875rem' }}>Edit Customer</button>
+                                        <button 
+                                            className="glass-panel" 
+                                            onClick={handleDeleteCustomer} 
+                                            style={{ padding: '0.5rem', cursor: 'pointer', color: 'var(--color-danger)' }}
+                                            title="Delete Customer"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </>
                                 )}
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
@@ -667,7 +688,7 @@ const CustomerDetail = () => {
                                             style={{ width: '100%' }}
                                             value={currentId || ''}
                                             onChange={(e) => {
-                                                const val = e.target.value === '' ? null : parseInt(e.target.value);
+                                                const val = e.target.value === '' ? null : e.target.value;
                                                 setFormData({ ...formData, [section.idField]: val });
                                             }}
                                         >
@@ -717,9 +738,11 @@ const CustomerDetail = () => {
                                             onChange={(e) => setReminderDate(e.target.value)}
                                         />
                                     </div>
-                                    <button className="btn-primary" onClick={handleAddActivity} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Send size={16} /> Log Activity
-                                    </button>
+                                    {hasPermission('MANAGE_CUSTOMERS') && (
+                                        <button className="btn-primary" onClick={handleAddActivity} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Send size={16} /> Log Activity
+                                        </button>
+                                    )}
                                 </div>
                             </Card>
 
@@ -739,10 +762,11 @@ const CustomerDetail = () => {
                                             <div style={{ paddingTop: '0.25rem' }}>
                                                 <input
                                                     type="checkbox"
+                                                    disabled={!hasPermission('MANAGE_CUSTOMERS')}
                                                     checked={!!isDone}
                                                     onChange={() => handleToggleDone(`cust-${log.id}`, 'customer', isDone)}
-                                                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#22c55e' }}
-                                                    title="Mark as Done"
+                                                    style={{ width: '18px', height: '18px', cursor: hasPermission('MANAGE_CUSTOMERS') ? 'pointer' : 'not-allowed', accentColor: '#22c55e' }}
+                                                    title={hasPermission('MANAGE_CUSTOMERS') ? "Mark as Done" : "Requires Manager Permissions"}
                                                 />
                                             </div>
                                             <div style={{ flex: 1 }}>
@@ -756,26 +780,30 @@ const CustomerDetail = () => {
                                                         )}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedActivity({ ...log, type: 'customer' });
-                                                                setIsEditModalOpen(true);
-                                                            }}
-                                                            style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
-                                                        >
-                                                            <Edit2 size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (window.confirm('Delete this activity?')) {
-                                                                    const { error } = await deleteActivity(`cust-${log.id}`, 'customer');
-                                                                    if (error) alert('Error: ' + error.message);
-                                                                }
-                                                            }}
-                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {hasPermission('MANAGE_CUSTOMERS') && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedActivity({ ...log, type: 'customer' });
+                                                                        setIsEditModalOpen(true);
+                                                                    }}
+                                                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (window.confirm('Delete this activity?')) {
+                                                                            const { error } = await deleteActivity(`cust-${log.id}`, 'customer');
+                                                                            if (error) alert('Error: ' + error.message);
+                                                                        }
+                                                                    }}
+                                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <p style={{

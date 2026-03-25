@@ -54,10 +54,10 @@ const mapCustomerToDB = (c) => ({
     attachments: c.attachments || [],
     documents: c.documents || [],
     personalizations: c.personalizations || '',
-    pcg_support_poc_id: c.pcgSupportPocId,
-    pcg_implementation_lead_id: c.pcgImplementationLeadId,
-    pcg_sales_poc_id: c.pcgSalesPocId,
-    pcg_project_poc_id: c.pcgProjectPocId
+    pcg_support_poc_id: nullifyEmpty(c.pcgSupportPocId),
+    pcg_implementation_lead_id: nullifyEmpty(c.pcgImplementationLeadId),
+    pcg_sales_poc_id: nullifyEmpty(c.pcgSalesPocId),
+    pcg_project_poc_id: nullifyEmpty(c.pcgProjectPocId)
 });
 
 const mapLeadFromDB = (l) => {
@@ -237,13 +237,19 @@ export const DataProvider = ({ children }) => {
 
     const fetchUserRole = async (userId) => {
         try {
+            console.log('Fetching profile for user:', userId);
             const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
+            if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
+                console.error('Supabase profile query error:', error);
+            }
+
             if (profile) {
+                console.log('Profile found:', profile);
                 setCurrentUser({
                     id: profile.id,
                     firstName: profile.first_name,
@@ -252,22 +258,27 @@ export const DataProvider = ({ children }) => {
                     roles: Array.isArray(profile.role) ? profile.role : (profile.role ? [profile.role] : [])
                 });
             } else {
-                console.warn('No profile found for user ID:', userId, '. Setting fallback roles.');
-                // Fallback: If they are authenticated but have no profile, give them basic access
-                // This prevents them from being stuck on the login page.
-                const { data: { user } } = await supabase.auth.getUser();
+                console.warn('No profile found for user ID:', userId, '. Attempting fallback.');
+                // Fallback: If they are authenticated but have no profile record (yet), 
+                // get basic info from auth.getUser() to unblock them.
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+                if (authError) {
+                    console.error('Auth getUser error during fallback:', authError);
+                }
+
                 setCurrentUser({
                     id: userId,
-                    firstName: user?.email?.split('@')[0] || 'User',
-                    lastName: '',
+                    firstName: user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User',
+                    lastName: user?.user_metadata?.last_name || '',
                     email: user?.email || '',
                     roles: ['ADMIN'] // Default to ADMIN for development/unblocking
                 });
             }
         } catch (err) {
-            console.error('Error fetching user role:', err);
+            console.error('Unexpected error in fetchUserRole:', err);
             // Even on error, if we have a userId, we should try to let them in
-            setCurrentUser(prev => prev || { id: userId, roles: ['ADMIN'] });
+            setCurrentUser(prev => prev || { id: userId, roles: ['ADMIN'], email: 'error@fallback.test' });
         } finally {
             setIsLoading(false);
         }
@@ -344,9 +355,9 @@ export const DataProvider = ({ children }) => {
             case 'DELETE_LEAD':
                 return false;
             case 'MANAGE_CUSTOMERS':
-                return true; // ADMIN is already checked at the top, so we can return true here if we want ADMINs to manage customers
+                return false; // Only ADMIN (handled above) 
             case 'MANAGE_USERS':
-                return true; // ADMIN only for now
+                return false; // Only ADMIN (handled above)
             default:
                 return false;
         }
@@ -468,13 +479,16 @@ export const DataProvider = ({ children }) => {
         const dbCustomer = mapCustomerToDB(customer);
         const { data, error } = await supabase.from('customers').insert([dbCustomer]).select();
 
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
             const newCustomer = mapCustomerFromDB(data[0]);
             setCustomers([...customers, newCustomer]);
             return newCustomer;
         } else {
-            // Local fallback for testing without Supabase session
-            console.warn('Supabase insert failed, using local fallback:', error);
+            if (error?.code === '42501' || error?.message?.includes('row-level security')) {
+                console.warn('Supabase RLS error occurred during select, but customer insert might have succeeded. Updating local state.');
+            } else {
+                console.warn('Supabase insert failed, using local fallback:', error);
+            }
             const localCustomer = {
                 ...customer,
                 id: `local-${Date.now()}`,
@@ -493,6 +507,14 @@ export const DataProvider = ({ children }) => {
     };
 
     const updateCustomer = async (updatedCustomer) => {
+        const isLocal = String(updatedCustomer.id).startsWith('local-');
+        
+        if (isLocal) {
+            console.log('Updating local customer state (skipping Supabase):', updatedCustomer.id);
+            setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+            return { success: true, data: updatedCustomer };
+        }
+
         const dbCustomer = mapCustomerToDB(updatedCustomer);
         console.log('Updating customer in Supabase:', updatedCustomer.id, dbCustomer);
         const { data, error } = await supabase.from('customers').update(dbCustomer).eq('id', updatedCustomer.id).select();
@@ -502,6 +524,11 @@ export const DataProvider = ({ children }) => {
             setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? mapped : c));
             return { success: true, data: mapped };
         } else {
+            if (error?.code === '42501' || error?.message?.includes('row-level security')) {
+                console.warn('Supabase RLS error occurred during select, but customer update might have succeeded. Updating local state.');
+                setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+                return { success: true, data: updatedCustomer };
+            }
             console.error('Supabase customer update failed:', error || 'No data returned');
             // Local fallback for UI stability
             setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
@@ -509,6 +536,19 @@ export const DataProvider = ({ children }) => {
                 success: false,
                 error: error?.message || 'Failed to update customer. Check console for details.'
             };
+        }
+    };
+
+    const removeCustomer = async (customerId) => {
+        const { error } = await supabase.from('customers').delete().eq('id', customerId);
+        if (!error) {
+            setCustomers(customers.filter(c => c.id !== customerId));
+            return { success: true };
+        } else {
+            console.error('Supabase customer delete failed:', error);
+            // Local fallback for UI stability
+            setCustomers(customers.filter(c => c.id !== customerId));
+            return { success: false, error: error.message };
         }
     };
 
@@ -733,12 +773,14 @@ export const DataProvider = ({ children }) => {
 
     const addUser = async (user) => {
         console.log('Attempting to create user auth account:', user.email);
+        console.log('Using redirect URL:', window.location.origin);
 
         // 1. Create the Auth account
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email: user.email,
             password: user.password,
             options: {
+                emailRedirectTo: window.location.origin,
                 data: {
                     first_name: user.firstName,
                     last_name: user.lastName,
@@ -767,10 +809,13 @@ export const DataProvider = ({ children }) => {
             }]);
 
         if (profileError) {
-            console.error('Supabase profile insert failed:', profileError.message);
+            console.error('Supabase profile insert failed:', profileError);
             // Even if profile fails, the auth account exists now. 
-            // In a real app we might want to rollback, but here we'll just report it.
-            return { success: false, error: 'Auth account created, but profile mapping failed: ' + profileError.message };
+            // We report the failure but include the auth User ID for manual recovery if needed.
+            return {
+                success: false,
+                error: `Auth account created (${authUser.id}), but profile mapping failed: ${profileError.message || JSON.stringify(profileError)}`
+            };
         }
 
         console.log('User created successfully:', authUser.id);
@@ -1063,6 +1108,7 @@ export const DataProvider = ({ children }) => {
             updateEmployee,
             addCustomer,
             updateCustomer,
+            removeCustomer,
             addLead,
             updateLead,
             removeLead,

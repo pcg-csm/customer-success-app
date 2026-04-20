@@ -20,10 +20,13 @@ const Login = () => {
         if (!result.success) {
             setError(result.error || 'Invalid email or password');
             setIsLoading(false);
+        } else {
+            // If success, we expect an immediate redirect. 
+            // In case of a severe failure where redirect doesn't happen, release the spinner after 4 seconds as a fallback.
+            setTimeout(() => {
+                setIsLoading(false);
+            }, 4000);
         }
-        // If success, the onAuthStateChange listener in DataContext will update currentUser
-        // and App.jsx will automatically redirect.
-    };
 
     return (
         <div style={{

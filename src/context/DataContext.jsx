@@ -409,6 +409,12 @@ export const DataProvider = ({ children }) => {
             return { success: false, error: error.message };
         }
 
+        // Explicitly fetch user role and data to force UI redirect without waiting for the Auth listener
+        if (data?.user) {
+            await fetchUserRole(data.user.id);
+            fetchData();
+        }
+
         return { success: true };
     };
 

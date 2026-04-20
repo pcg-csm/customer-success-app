@@ -210,9 +210,24 @@ export const DataProvider = ({ children }) => {
 
     // Initial auth check and data fetch
     useEffect(() => {
+        // Anti-hang fallback: Force the app to continue if Supabase initialization hangs (e.g. broken navigator locks after clearing history)
+        const safetyTimeout = setTimeout(() => {
+            setIsLoading(prev => {
+                if (prev) console.warn('Auth check exceeded 5s timeout, forcing unlock.');
+                return false;
+            });
+        }, 5000);
+
         const initializeAuth = async () => {
             try {
-                const { data, error } = await supabase.auth.getSession();
+                // Also add a timeout to the specific getSession call
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('getSession timeout')), 4000)
+                );
+                
+                const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+                
                 if (error) {
                     console.error('Session error:', error);
                 }
@@ -242,7 +257,10 @@ export const DataProvider = ({ children }) => {
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            if (subscription) subscription.unsubscribe();
+            clearTimeout(safetyTimeout);
+        };
     }, []);
 
     const fetchUserRole = async (userId) => {

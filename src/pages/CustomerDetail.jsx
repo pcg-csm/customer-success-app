@@ -59,7 +59,7 @@ const SatisfactionGauge = ({ score }) => {
 const CustomerDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { customers, updateCustomer, removeCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent, toggleActivityStatus } = useData();
+    const { customers, updateCustomer, removeCustomer, hasPermission, products, employees, deleteActivity, updateActivityContent, toggleActivityStatus, addActivity } = useData();
     const customer = customers.find(c => String(c.id) === String(id));
     const [activeTab, setActiveTab] = useState('overview');
     const [activities, setActivities] = useState(customer?.activityLog || []);
@@ -123,19 +123,25 @@ const CustomerDetail = () => {
         if (error) alert('Error updating status: ' + error.message);
     };
 
-    const handleAddActivity = () => {
+    const handleAddActivity = async () => {
         if (!newActivity.trim()) return;
-        const activity = {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            content: newActivity,
-            reminder: reminderDate || null
+        
+        const activityData = {
+            type: 'customer',
+            entityId: customer.id,
+            date: new Date().toISOString().split('T')[0],
+            details: newActivity,
+            nextActionDate: reminderDate || ''
         };
-        const updatedActivities = [activity, ...activities];
-        setActivities(updatedActivities);
-        updateCustomer({ ...customer, activityLog: updatedActivities });
-        setNewActivity('');
-        setReminderDate('');
+
+        const { error } = await addActivity(activityData);
+        
+        if (error) {
+            alert('Failed to log activity: ' + (error.message || error));
+        } else {
+            setNewActivity('');
+            setReminderDate('');
+        }
     };
 
     if (!customer) {
@@ -773,9 +779,9 @@ const CustomerDetail = () => {
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: isDone ? '#16653499' : 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                                                         <Calendar size={14} /> {new Date(log.timestamp).toLocaleString()}
-                                                        {log.reminder && (
+                                                        {(log.reminder || log.nextActionDate) && (
                                                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--color-warning)', marginLeft: '1rem', background: 'rgba(255,165,0,0.1)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
-                                                                <Clock size={12} /> Reminder: {new Date(log.reminder).toLocaleDateString()}
+                                                                <Clock size={12} /> Reminder: {new Date(log.nextActionDate || log.reminder).toLocaleDateString()}
                                                             </span>
                                                         )}
                                                     </div>

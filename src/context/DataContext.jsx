@@ -1,9 +1,40 @@
-import React, { createContext, useState, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const DataContext = createContext();
 
 const nullifyEmpty = (val) => (val === '' ? null : val);
+
+const fetchUserRole = async (userId) => {
+    try {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (error) {
+            console.error('Supabase profile query error:', error);
+            return null;
+        }
+
+        if (profile) {
+            return {
+                id: profile.id,
+                firstName: profile.first_name,
+                lastName: profile.last_name,
+                email: profile.email,
+                roles: Array.isArray(profile.role) ? profile.role : (profile.role ? [profile.role] : [])
+            };
+        }
+
+        console.warn('No profile found for authenticated user:', userId);
+        return null;
+    } catch (err) {
+        console.error('Unexpected error in fetchUserRole:', err);
+        return null;
+    }
+};
 
 // Helper to map DB snake_case to UI camelCase
 const mapCustomerFromDB = (c) => {
@@ -207,117 +238,14 @@ export const DataProvider = ({ children }) => {
 
     const [currentUser, setCurrentUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const currentUserIdRef = useRef(null);
+    const authRequestRef = useRef(0);
+    const initialAuthCheckRef = useRef(true);
 
-    // Initial auth check and data fetch
-    useEffect(() => {
-        // Anti-hang fallback: Force the app to continue if Supabase initialization hangs (e.g. broken navigator locks after clearing history)
-        const safetyTimeout = setTimeout(() => {
-            setIsLoading(prev => {
-                if (prev) console.warn('Auth check exceeded 5s timeout, forcing unlock.');
-                return false;
-            });
-        }, 5000);
+    const fetchData = useCallback(async ({ authRequest, bypass = false, manageLoading = true } = {}) => {
+        if (!bypass && !currentUserIdRef.current) return;
 
-        const initializeAuth = async () => {
-            try {
-                // Also add a timeout to the specific getSession call
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('getSession timeout')), 4000)
-                );
-                
-                const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
-                
-                if (error) {
-                    console.error('Session error:', error);
-                }
-                const session = data?.session;
-                
-                if (session) {
-                    await fetchUserRole(session.user.id);
-                    fetchData();
-                } else {
-                    setIsLoading(false);
-                }
-            } catch (err) {
-                console.error('Failed to initialize auth:', err);
-                setIsLoading(false);
-            }
-        };
-
-        initializeAuth();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (session) {
-                await fetchUserRole(session.user.id);
-                if (event === 'SIGNED_IN') fetchData();
-            } else {
-                setCurrentUser(null);
-                setIsLoading(false);
-            }
-        });
-
-        return () => {
-            if (subscription) subscription.unsubscribe();
-            clearTimeout(safetyTimeout);
-        };
-    }, []);
-
-    const fetchUserRole = async (userId) => {
-        try {
-            console.log('Fetching profile for user:', userId);
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows found"
-                console.error('Supabase profile query error:', error);
-            }
-
-            if (profile) {
-                console.log('Profile found:', profile);
-                setCurrentUser({
-                    id: profile.id,
-                    firstName: profile.first_name,
-                    lastName: profile.last_name,
-                    email: profile.email,
-                    roles: Array.isArray(profile.role) ? profile.role : (profile.role ? [profile.role] : [])
-                });
-            } else {
-                console.warn('No profile found for user ID:', userId, '. Attempting fallback.');
-                // Fallback: If they are authenticated but have no profile record (yet), 
-                // get basic info from auth.getUser() to unblock them.
-                const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-                if (authError) {
-                    console.error('Auth getUser error during fallback:', authError);
-                }
-
-                setCurrentUser({
-                    id: userId,
-                    firstName: user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User',
-                    lastName: user?.user_metadata?.last_name || '',
-                    email: user?.email || '',
-                    roles: ['ADMIN'] // Default to ADMIN for development/unblocking
-                });
-            }
-        } catch (err) {
-            console.error('Unexpected error in fetchUserRole:', err);
-            // Even on error, if we have a userId, we should try to let them in
-            setCurrentUser(prev => prev || { id: userId, roles: ['ADMIN'], email: 'error@fallback.test' });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const fetchData = async (isBypass = false) => {
-        const { data, error } = await supabase.auth.getSession();
-        const session = data?.session;
-        if (!session && !isBypass && currentUser?.id !== 'mock-admin-id') return;
-
-        setIsLoading(true);
+        if (manageLoading) setIsLoading(true);
         try {
             const [
                 { data: customersData },
@@ -339,6 +267,8 @@ export const DataProvider = ({ children }) => {
                 supabase.from('profiles').select('*').order('first_name')
             ]);
 
+            if (authRequest !== undefined && authRequest !== authRequestRef.current) return;
+
             if (customersData) setCustomers(customersData.map(mapCustomerFromDB));
             if (productsData) setProducts(productsData.map(p => p.name));
             if (employeesData) setEmployees(employeesData.map(mapEmployeeFromDB));
@@ -356,9 +286,78 @@ export const DataProvider = ({ children }) => {
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
-            setIsLoading(false);
+            if (manageLoading && (authRequest === undefined || authRequest === authRequestRef.current)) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, []);
+
+    const loadSession = useCallback(async (session) => {
+        const authRequest = ++authRequestRef.current;
+
+        if (!session) {
+            currentUserIdRef.current = null;
+            setCurrentUser(null);
+            setIsLoading(false);
+            return;
+        }
+
+        if (currentUserIdRef.current === session.user.id) {
+            setIsLoading(false);
+            return;
+        }
+
+        currentUserIdRef.current = null;
+        setCurrentUser(null);
+        setIsLoading(true);
+
+        const profile = await fetchUserRole(session.user.id);
+        if (authRequest !== authRequestRef.current) return;
+
+        if (!profile) {
+            // A real Supabase user without a profile is not authorized to use the app.
+            setIsLoading(false);
+            return;
+        }
+
+        currentUserIdRef.current = profile.id;
+        setCurrentUser(profile);
+        await fetchData({ authRequest, manageLoading: false });
+
+        if (authRequest === authRequestRef.current) setIsLoading(false);
+    }, [fetchData]);
+
+    // getSession is the single initial session check. Auth events only schedule the
+    // same lifecycle after Supabase has completed its callback, avoiding callback races.
+    useEffect(() => {
+        let active = true;
+
+        const initializeAuth = async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) console.error('Session error:', error);
+                if (active && initialAuthCheckRef.current) await loadSession(data?.session);
+            } catch (err) {
+                console.error('Failed to initialize auth:', err);
+                if (active) setIsLoading(false);
+            }
+        };
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'INITIAL_SESSION') return;
+            initialAuthCheckRef.current = false;
+            queueMicrotask(() => {
+                if (active) void loadSession(session);
+            });
+        });
+
+        void initializeAuth();
+
+        return () => {
+            active = false;
+            subscription.unsubscribe();
+        };
+    }, [loadSession]);
 
     const hasPermission = (permission) => {
         if (!currentUser || !currentUser.roles) return false;
@@ -393,33 +392,32 @@ export const DataProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
 
         if (error) {
-            // Local fallback for hardcoded credentials
-            if (email === 'admin@pcg.com' && password === 'password') {
+            // This mock account is intentionally available only during local development.
+            if (import.meta.env.DEV && window.location.hostname === 'localhost' && email === 'admin@pcg.com' && password === 'password') {
                 console.log('Local: Bypass login triggered via credentials');
-                await bypassLogin();
-                return { success: true };
+                return bypassLogin();
             }
             console.error('Login error:', error.message);
             return { success: false, error: error.message };
         }
 
-        // Explicitly fetch user role and data to force UI redirect without waiting for the Auth listener
-        if (data?.user) {
-            await fetchUserRole(data.user.id);
-            fetchData();
-        }
-
+        // The auth-state listener owns profile and application-data loading.
         return { success: true };
     };
 
     const bypassLogin = async () => {
+        if (!import.meta.env.DEV || window.location.hostname !== 'localhost') {
+            return { success: false, error: 'Local development bypass is unavailable.' };
+        }
+
         console.log('Dev: Bypassing login...');
+        const authRequest = ++authRequestRef.current;
         setCurrentUser({
             id: 'mock-admin-id',
             firstName: 'Dev',
@@ -427,14 +425,15 @@ export const DataProvider = ({ children }) => {
             email: 'admin@local.test',
             roles: ['ADMIN']
         });
-        setIsLoading(false);
-        // Pass true to indicate this is a bypass call
-        fetchData(true);
+        currentUserIdRef.current = 'mock-admin-id';
+        setIsLoading(true);
+        await fetchData({ authRequest, bypass: true, manageLoading: false });
+        if (authRequest === authRequestRef.current) setIsLoading(false);
+        return { success: true };
     };
 
     const logout = async () => {
         await supabase.auth.signOut();
-        setCurrentUser(null);
     };
 
     const changePassword = async (newPassword) => {
